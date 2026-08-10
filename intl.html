@@ -1053,7 +1053,7 @@ window.addEventListener('pageshow', function(e){
     <i class="bi bi-arrow-left-right" style="font-size:48px;color:#2563eb;display:block;margin-bottom:16px"></i>
     <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:8px">통합 엑셀 업로드</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:20px">한국영업 사이트에서 엑셀을 업로드하면<br>해외영업 데이터도 자동으로 함께 업데이트됩니다.</div>
-    <a onclick="(async()=>{const {data:{session:s}}=await _sb.auth.getSession();let u='https://pmw0406-commits.github.io/novadx/kor.html';if(s)u+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token)+'&app=korea';location.href=u;})()"
+    <a onclick="(async()=>{const {data:{session:s}}=await _sb.auth.getSession();let u='https://mwpark0406.github.io/novadx/kor.html';if(s)u+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token)+'&app=korea';location.href=u;})()"
       style="display:inline-flex;align-items:center;gap:8px;background:#2563eb;color:#fff;border-radius:8px;padding:10px 24px;font-weight:600;font-size:13px;cursor:pointer;text-decoration:none">
       <i class="bi bi-box-arrow-up-right"></i>한국영업으로 이동하여 업로드
     </a>
@@ -1531,7 +1531,7 @@ function handleUpload(file){
     <div id="login-error" style="font-size:12px;color:#dc2626;margin-bottom:12px;display:none">이메일 또는 비밀번호가 올바르지 않습니다.</div>
     <button id="login-btn" class="btn btn-primary w-100" onclick="doLogin()" style="font-weight:700;padding:10px;background:#2563eb;border-color:#2563eb">로그인</button>
     <div style="text-align:center;margin-top:14px">
-      <a href="https://pmw0406-commits.github.io/novadx/kor.html" style="font-size:12px;color:#6b7280;text-decoration:none">← 메인으로 돌아가기</a>
+      <a href="https://mwpark0406.github.io/novadx/kor.html" style="font-size:12px;color:#6b7280;text-decoration:none">← 메인으로 돌아가기</a>
     </div>
   </div>
 </div>
@@ -1554,7 +1554,7 @@ let _currentUser = null;
 // ── 중앙 로그인(WT_SSO) ──────────────────────────────────
 // 자체 로그인 화면은 더 이상 노출하지 않는다. 세션 없음 → 중앙(로그인 허브)으로 ret 붙여 보냄(로그인 후 복귀).
 // 권한 없음은 ret 없이 보낸다(붙이면 중앙→여기→중앙 무한루프).
-var _WT_CENTRAL='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_CENTRAL='https://mwpark0406.github.io/novadx/kor.html';
 function _wtToCentral(withRet){
   var u=_WT_CENTRAL;
   if(withRet) u+='#ret='+encodeURIComponent(location.origin+location.pathname+location.search);   // 해시 제외(토큰 유출·오염 방지)
@@ -1644,7 +1644,7 @@ async function _afterLogin(user) {
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["intl"];                 /* 이 사이트 자신의 registry key(들) */
-var _WT_NOVADX='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }
@@ -1710,7 +1710,7 @@ async function _wtRenderSwitcher(){
 async function doLogout() {
   try{ await _sb.auth.signOut(); }catch(e){}
   try{ sessionStorage.removeItem('intl_page'); }catch(e){}   // WT_NAV[5] 다음 계정에 이전 페이지 복원 방지
-  location.href='https://pmw0406-commits.github.io/novadx/kor.html';
+  location.href='https://mwpark0406.github.io/novadx/kor.html';
 }
 
 // ── 해외 예정분(회계 미반영 매출) ──────────────────────────────

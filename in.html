@@ -412,7 +412,7 @@ td.empty{padding:22px 12px}
 // ═══ 인도법인 종합관리 v2 — 매출인식→수금→미수 (법인 ERP 공통 모델) · cons_cache key='corp_in_erp' ═══
 const SB_URL='https://bdkurlqmfsswgeiujyev.supabase.co',SB_KEY='sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3';
 const _sb=supabase.createClient(SB_URL,SB_KEY);
-const CENTRAL='https://pmw0406-commits.github.io/novadx/';
+const CENTRAL='https://mwpark0406.github.io/novadx/';
 /* 중앙 로그인으로 이동(세션 없음). ret에는 해시를 절대 포함하지 않음 — #at/rt 토큰 유출·오염 방지 */
 function _goCentralWithRet(){location.replace(CENTRAL+'#ret='+encodeURIComponent(location.origin+location.pathname+location.search));}
 const KEY='corp_in_erp', SYM='₹', CUR='INR';
@@ -462,7 +462,7 @@ function ready(){document.getElementById('boot-ov').style.display='none';documen
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["in"];                 /* 이 사이트 자신의 registry key(들) */
-var _WT_NOVADX='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }

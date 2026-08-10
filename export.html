@@ -697,7 +697,7 @@ async function goSite(u,extra){try{var s=(await _sb.auth.getSession()).data.sess
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["export"];                 /* 이 사이트 자신의 registry key(들) */
-var _WT_NOVADX='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }
@@ -840,7 +840,7 @@ async function doLogin(){
   if(res.error){_showLogin('❌ 이메일 또는 비밀번호가 올바르지 않습니다');return;}
   await _afterAuth(res.data.user);
 }
-async function doLogout(){try{await _sb.auth.signOut();}catch(e){}location.href='https://pmw0406-commits.github.io/novadx/kor.html';}
+async function doLogout(){try{await _sb.auth.signOut();}catch(e){}location.href='https://mwpark0406.github.io/novadx/kor.html';}
 /* ── 자동 로그아웃: 30분 무동작 시 (마스터·데모 계정 제외) ── */
 (function(){
   var IDLE_MS=30*60*1000, _it;

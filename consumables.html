@@ -423,7 +423,7 @@ window.addEventListener('pageshow', function(e){
   </header>
     <div class="wrap" style="margin:18px auto 0;display:flex;justify-content:center">
     <div style="display:inline-flex;background:#e2e8f0;border-radius:12px;padding:5px;gap:4px;box-shadow:inset 0 1px 2px rgba(0,0,0,.06)">
-      <button type="button" onclick="location.href='https://pmw0406-commits.github.io/novadx/ilbo.html'"
+      <button type="button" onclick="location.href='https://mwpark0406.github.io/novadx/ilbo.html'"
         style="border:0;background:transparent;color:#475569;font-size:14px;font-weight:700;padding:9px 20px;border-radius:9px;cursor:pointer;transition:all .15s"
         onmouseover="this.style.background='rgba(255,255,255,.65)'" onmouseout="this.style.background='transparent'">📊 일 매출 일보</button>
       <button type="button" id="tab-report" onclick="showReport()"
@@ -983,7 +983,7 @@ function loadReport(){
 }
 
 // ── 인증 ──────────────────────────────────────────────
-var CENTRAL='https://pmw0406-commits.github.io/novadx/';
+var CENTRAL='https://mwpark0406.github.io/novadx/';
 /* 중앙 로그인으로 이동(세션 없음). ret에는 해시를 절대 포함하지 않음 — #at/rt 토큰 유출·오염 방지 */
 function _goCentralWithRet(){ location.replace(CENTRAL+'#ret='+encodeURIComponent(location.origin+location.pathname+location.search)); }
 function doLogin(){
@@ -1020,7 +1020,7 @@ function doLogin(){
   });
   _arm();
 })();
-function doLogout(){ try{sessionStorage.removeItem('cons_view');}catch(e){} _sb.auth.signOut().then(function(){ location.href='https://pmw0406-commits.github.io/novadx/'; }); }
+function doLogout(){ try{sessionStorage.removeItem('cons_view');}catch(e){} _sb.auth.signOut().then(function(){ location.href='https://mwpark0406.github.io/novadx/'; }); }
 async function wtChangePw(){
   var np=prompt('새 비밀번호를 입력하세요 (6자 이상)');
   if(np===null) return;
@@ -1033,7 +1033,7 @@ async function wtChangePw(){
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["consumables"];           /* 이 사이트 자신의 registry key(들) */
-var _WT_NOVADX='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }

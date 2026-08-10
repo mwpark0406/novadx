@@ -1737,7 +1737,7 @@ const arrow = v => v===null?'-':(v>=0?'▲':'▼')+Math.abs(v).toFixed(0)+'%';
 // ── 중앙 로그인(WT_SSO) ──────────────────────────────────
 // 자체 로그인 화면은 더 이상 노출하지 않는다. 세션 없음 → 중앙(노바진단)으로 ret 붙여 보냄(로그인 후 복귀).
 // 권한 없음은 ret 없이 보낸다(붙이면 중앙→여기→중앙 무한루프).
-var _WT_CENTRAL='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_CENTRAL='https://mwpark0406.github.io/novadx/kor.html';
 var _wtDenied=false;   // 권한 게이트 실패 → 중앙 이동 중(후속 렌더/네비 차단)
 function _wtToCentral(withRet){
   var u=_WT_CENTRAL;
@@ -1779,7 +1779,7 @@ async function doLogin(){
 async function doLogout(){
   try{ await _sb.auth.signOut(); }catch(e){}
   try{ sessionStorage.removeItem('total_page'); }catch(_){}   // 다음 계정에 이전 계정 페이지 복원 방지
-  location.href='https://pmw0406-commits.github.io/novadx/';
+  location.href='https://mwpark0406.github.io/novadx/';
 }
 async function wtChangePw(){
   const np=prompt('새 비밀번호를 입력하세요 (6자 이상)');
@@ -1799,7 +1799,7 @@ async function goSite(base,extra){
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["total"];                 /* 이 사이트 자신의 registry key(들) */
-var _WT_NOVADX='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }
@@ -2315,7 +2315,7 @@ function renderOps(){
   let corpTbl='';
   if(corps.length) corpTbl='<div class="ck-card p0" style="margin-top:12px"><table class="ck-tbl"><thead><tr>'+
     '<th class="l">해외 법인 <span style="font-weight:500;color:#94a3b8">· 법인 자체 손익</span></th><th>매출</th><th>영업이익</th><th>영업이익률</th><th>거래</th></tr></thead><tbody>'+
-    corps.map(c=>'<tr class="ck-clk" onclick="location.href=\'https://pmw0406-commits.github.io/novadx/'+c.link+'\'"><td class="l">'+c.n+' <span style="color:#cbd5e1">›</span></td>'+
+    corps.map(c=>'<tr class="ck-clk" onclick="location.href=\'https://mwpark0406.github.io/novadx/'+c.link+'\'"><td class="l">'+c.n+' <span style="color:#cbd5e1">›</span></td>'+
       '<td class="n"><b>'+e8(c.rev)+'</b>억</td><td class="n" style="color:'+sign(c.op)+'">'+(c.op>=0?'+':'−')+e8(Math.abs(c.op))+'억</td>'+
       '<td class="n" style="color:'+(c.mgn>=15?C.g:c.mgn>=5?C.ink:C.r)+'">'+(c.mgn==null?'–':c.mgn.toFixed(1)+'%')+'</td>'+
       '<td class="n">'+fmt(c.cnt)+'건</td></tr>').join('')+'</tbody></table></div>';
@@ -2345,11 +2345,11 @@ function renderOps(){
 
   // ══ 5) 선행지표 — 다음 분기 예고 ══════════════════════════════════════════
   const lead='<div class="ck-cards">'+
-    (k.plCnt!=null?_opsCard('해외 수주 파이프라인',e8(k.plAmt),'억',k.plCnt+'건 · 확률가중 '+e8(k.plW)+'억','#2563eb','https://pmw0406-commits.github.io/novadx/intl.html'):'')+
-    (k.pendAmt!=null?_opsCard('미반영 예정 매출',e8(k.pendAmt),'억',k.pendCnt+'건 · 곧 회계 인식','#7c3aed','https://pmw0406-commits.github.io/novadx/ilbo.html'):'')+
-    (k.exReady!=null?_opsCard('출고 대기',k.exReady,'건','수출 진행 '+fmt(k.exTot)+'건 누적','#d97706','https://pmw0406-commits.github.io/novadx/export.html'):'')+
-    (k.kcUndel!=null?_opsCard('국내 미납품',k.kcUndel,'건',e8(k.kcUndelAmt)+'억 · 전체 '+k.kcTot+'건 중','#dc2626','https://pmw0406-commits.github.io/novadx/kor-sales.html'):'')+
-    (k.demoUp!=null?_opsCard('예정 데모',k.demoUp,'건','총 '+k.demoAll+'건 등록','#0891b2','https://pmw0406-commits.github.io/novadx/kor.html'):'')+
+    (k.plCnt!=null?_opsCard('해외 수주 파이프라인',e8(k.plAmt),'억',k.plCnt+'건 · 확률가중 '+e8(k.plW)+'억','#2563eb','https://mwpark0406.github.io/novadx/intl.html'):'')+
+    (k.pendAmt!=null?_opsCard('미반영 예정 매출',e8(k.pendAmt),'억',k.pendCnt+'건 · 곧 회계 인식','#7c3aed','https://mwpark0406.github.io/novadx/ilbo.html'):'')+
+    (k.exReady!=null?_opsCard('출고 대기',k.exReady,'건','수출 진행 '+fmt(k.exTot)+'건 누적','#d97706','https://mwpark0406.github.io/novadx/export.html'):'')+
+    (k.kcUndel!=null?_opsCard('국내 미납품',k.kcUndel,'건',e8(k.kcUndelAmt)+'억 · 전체 '+k.kcTot+'건 중','#dc2626','https://mwpark0406.github.io/novadx/kor-sales.html'):'')+
+    (k.demoUp!=null?_opsCard('예정 데모',k.demoUp,'건','총 '+k.demoAll+'건 등록','#0891b2','https://mwpark0406.github.io/novadx/kor.html'):'')+
     '</div>';
   h+=_opsSec('선행지표','bi-hourglass-split',lead,'확정 매출 이후에 실적으로 바뀔 것들');
 
@@ -2357,10 +2357,10 @@ function renderOps(){
   const alerts=[];
   rows.forEach(x=>{ const ach=x.tgt>0?x.rev/x.tgt*100:null;
     if(ach!=null&&ach<85) alerts.push(['목표 미달',x.n+' 기간목표 '+ach.toFixed(0)+'% — 부족 '+e8(x.tgt-x.rev)+'억',C.r,"showPage('goals',null)"]); });
-  if(k.arRisk>0) alerts.push(['채권 위험','지연·장기체납 '+k.arRiskCnt+'건 · 잔여위험 '+e8(k.arRisk)+'억',C.y,"location.href='https://pmw0406-commits.github.io/novadx/receivables.html'"]);
-  if((k.arLong||[]).length) alerts.push(['장기 미회수',(k.arLong||[]).length+'건 장기체납 — 최장 '+((k.arLong.slice().sort((a,b)=>(+b.days||0)-(+a.days||0))[0]||{}).elapsed||'-'),C.r,"location.href='https://pmw0406-commits.github.io/novadx/receivables.html'"]);
-  if(k.kcUndel) alerts.push(['납품 지연','국내 미납품 '+k.kcUndel+'건 · '+e8(k.kcUndelAmt)+'억',C.y,"location.href='https://pmw0406-commits.github.io/novadx/kor-sales.html'"]);
-  if(k.tdUncol) alerts.push(['자산 미회수','보상장비 '+k.tdUncol+'대 미회수',C.y,"location.href='https://pmw0406-commits.github.io/novadx/kor.html'"]);
+  if(k.arRisk>0) alerts.push(['채권 위험','지연·장기체납 '+k.arRiskCnt+'건 · 잔여위험 '+e8(k.arRisk)+'억',C.y,"location.href='https://mwpark0406.github.io/novadx/receivables.html'"]);
+  if((k.arLong||[]).length) alerts.push(['장기 미회수',(k.arLong||[]).length+'건 장기체납 — 최장 '+((k.arLong.slice().sort((a,b)=>(+b.days||0)-(+a.days||0))[0]||{}).elapsed||'-'),C.r,"location.href='https://mwpark0406.github.io/novadx/receivables.html'"]);
+  if(k.kcUndel) alerts.push(['납품 지연','국내 미납품 '+k.kcUndel+'건 · '+e8(k.kcUndelAmt)+'억',C.y,"location.href='https://mwpark0406.github.io/novadx/kor-sales.html'"]);
+  if(k.tdUncol) alerts.push(['자산 미회수','보상장비 '+k.tdUncol+'대 미회수',C.y,"location.href='https://mwpark0406.github.io/novadx/kor.html'"]);
   if(landGap<0) alerts.push(['착지 미달','현 페이스로는 연말 목표 '+e8(Math.abs(landGap))+'억 미달',C.r,"showPage('goals',null)"]);
   h+=_opsSec('경영 주의 신호','bi-exclamation-triangle',
     alerts.length? '<div class="ck-alerts">'+alerts.map(a=>'<div class="ck-al" style="border-left-color:'+a[2]+'" onclick="'+a[3]+'"><div class="ck-alk" style="color:'+a[2]+'">'+a[0]+'</div><div class="ck-alv">'+a[1]+'</div><i class="bi bi-chevron-right"></i></div>').join('')+'</div>'
@@ -2374,7 +2374,7 @@ function renderOps(){
     ['소모품 매출','bi-droplet','consumables.html'],
     ['미국법인','bi-building','us.html'],['인도법인','bi-building','in.html'],['중국법인','bi-building','cn.html']];
   h+=_opsSec('전 사이트 바로가기','bi-grid-3x3-gap','<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    links.map(l=>'<a href="https://pmw0406-commits.github.io/novadx/'+l[2]+'" style="display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #d5dde8;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:600;color:#475569;text-decoration:none"><i class="bi '+l[1]+'" style="color:#0f766e"></i>'+l[0]+'</a>').join('')+'</div>');
+    links.map(l=>'<a href="https://mwpark0406.github.io/novadx/'+l[2]+'" style="display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #d5dde8;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:600;color:#475569;text-decoration:none"><i class="bi '+l[1]+'" style="color:#0f766e"></i>'+l[0]+'</a>').join('')+'</div>');
   if(OPS.kc===null) h+='<div style="font-size:11.5px;color:#94a3b8;margin-top:4px"><i class="bi bi-info-circle me-1"></i>국내 계약 상세(미납품·쿠폰)는 영업전략파트 권한이 있어야 표시됩니다</div>';
   el.innerHTML=h;
   _opsArChart(k);
@@ -4343,7 +4343,7 @@ function renderCorps(){
     '<div class="corp-hero" style="background:linear-gradient(135deg,#eef5ff 0%,#f7fbff 55%,'+sel.cp.c+'1f 140%);border:1px solid #e1e9f3">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
     '<span style="font-size:14px;font-weight:800"><i class="bi '+sel.cp.i+' me-1" style="color:'+sel.cp.c+'"></i>'+sel.cp.n+' 상세 <span style="font-size:11px;font-weight:500;color:var(--hero-sub)">· 1~'+t+'월 누적 · 실적 = 회계 + 미반영</span></span>'+
-    (sel.cp.n==='중국법인'?'<button class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:700;font-size:11.5px" onclick="goSite(\'https://pmw0406-commits.github.io/novadx/wtj-management/\',\'\')"><i class="bi bi-box-arrow-up-right me-1"></i>중국법인 관리 사이트</button>':'')+
+    (sel.cp.n==='중국법인'?'<button class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:700;font-size:11.5px" onclick="goSite(\'https://mwpark0406.github.io/novadx/wtj-management/\',\'\')"><i class="bi bi-box-arrow-up-right me-1"></i>중국법인 관리 사이트</button>':'')+
     '</div>'+
     '<div style="display:flex;gap:20px;align-items:baseline;margin-top:8px;flex-wrap:wrap">'+
     '<span style="font-size:1.8rem;font-weight:750;font-variant-numeric:tabular-nums">'+fmtW(sel.act)+'</span>'+

@@ -598,7 +598,7 @@ window.addEventListener('pageshow', function(e){
 <script>
 const SUPA_URL='https://bdkurlqmfsswgeiujyev.supabase.co';
 const SUPA_KEY='sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3';
-const CENTRAL='https://pmw0406-commits.github.io/novadx/';
+const CENTRAL='https://mwpark0406.github.io/novadx/';
 const _sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 let ME='', RAW=null, EDITS={}, E=[], M=[], curView='home';
 let _charts=[];
@@ -648,7 +648,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.sw-wrap'))document.
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
 var _WT_MASTER='pmw0406@demo.local';
 var _WT_OWN=["ar"];
-var _WT_CENTRAL='https://pmw0406-commits.github.io/novadx/kor.html';
+var _WT_CENTRAL='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
 async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
 function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }

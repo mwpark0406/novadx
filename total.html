@@ -175,10 +175,19 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 @media(max-width:1240px){.qd-top{grid-template-columns:1fr}}
 .qd-top .exec-hero{margin-bottom:0}
 .qd-top .qd-dual{margin-bottom:0}
-.qd-hd{display:grid;grid-template-columns:repeat(2,minmax(0,1fr) 96px 78px 66px);gap:0 26px;padding:8px 12px 7px;font-size:11px;color:#94a3b8;border-bottom:1px solid #eef2f7}
+.qd-hd{display:grid;grid-template-columns:repeat(2,minmax(0,1fr) 96px 78px 66px);gap:0 26px;padding:6px 12px 5px;font-size:11px;color:#94a3b8;border-bottom:1px solid #eef2f7;background:linear-gradient(#eef2f7,#eef2f7) 50% 0/1px 100% no-repeat}
 .qd-hd span:nth-child(2),.qd-hd span:nth-child(3),.qd-hd span:nth-child(4),.qd-hd span:nth-child(6),.qd-hd span:nth-child(7),.qd-hd span:nth-child(8){text-align:right}
-.qd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr) 96px 78px 66px);gap:0 26px}
-.qd-c{display:grid;grid-template-columns:subgrid;grid-column:span 4;align-items:center;padding:6px 12px;border-bottom:1px solid #f4f7fa;font-size:13px;cursor:pointer}
+/* 좌우 이등분이 한눈에 보이게 — 한가운데 세로 구분선 */
+.qd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr) 96px 78px 66px);gap:0 26px;background:linear-gradient(#e2e8f0,#e2e8f0) 50% 0/1px 100% no-repeat}
+.qd-c{display:grid;grid-template-columns:subgrid;grid-column:span 4;align-items:center;padding:4px 12px;border-bottom:1px solid #f4f7fa;font-size:13px;cursor:pointer}
+/* 이름칸: 국기/점 · 이름 · 태그 · 구성비 막대(빈 공간 채움) · 퍼센트 */
+.qd-c .n{display:flex;align-items:center;gap:6px;min-width:0}
+.qd-c .n .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1}
+.qd-c .n .fl{font-size:15px;line-height:1;flex-shrink:0}
+.qd-c .n .dl-dot{flex-shrink:0}
+.qd-c .n .nb{flex:1;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden;min-width:16px}
+.qd-c .n .nb i{display:block;height:100%;background:linear-gradient(90deg,#b9cff2,#93b5e8);border-radius:3px}
+.qd-c .n .sh{flex-shrink:0}
 .qd-c:hover{background:#f8fafc}
 .qd-c .n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#1c2534}
 .qd-c .n .sh{font-size:10.5px;color:#a8b3c1;font-weight:500;margin-left:5px}
@@ -203,7 +212,7 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 .qd-gh .gl{font-size:10px;font-weight:700;color:#fff;background:#94a3b8;border-radius:3px;padding:1px 5px;margin-left:7px;vertical-align:1px}
 /* 소계에 속한 상세 행은 들여쓰기 + 세로 안내선으로 종속 관계를 보이게 */
 .qd-c.sub .n{padding-left:15px;margin-left:3px;border-left:2px solid #dde5ee}
-.qd-gh>*{padding-top:7px;padding-bottom:7px}
+.qd-gh>*{padding-top:5px;padding-bottom:5px}
 .qd-gh>*:first-child{padding-left:12px}
 .qd-gh .y{padding-right:12px}
 .qd-gh .v,.qd-gh .p,.qd-gh .y{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -3006,6 +3015,8 @@ function _monthTarget(mo){
 
 // ── 상세 조회 ────────────────────────────────────────────
 const qState={f:1,t:5,ch:'all',cat:'all',tab:'prod',open:{},fold:{}};
+// 국가 코드 → [국기, 한국어명] — 화면에는 영문 약어 대신 이걸 쓴다
+const QGEO={KR:['🇰🇷','국내'],US:['🇺🇸','미국'],VN:['🇻🇳','베트남'],AE:['🇦🇪','아랍에미리트'],DE:['🇩🇪','독일'],BR:['🇧🇷','브라질'],TW:['🇹🇼','대만'],CN:['🇨🇳','중국'],IN:['🇮🇳','인도'],'국내':['🇰🇷','국내']};
 function syncQ(){
   document.querySelectorAll('#q-ch button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-v')===qState.ch));
   document.querySelectorAll('#q-cat button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-v')===qState.cat));
@@ -3093,14 +3104,22 @@ function renderQuery(){
     G.push({name:'미분류',val:rv,prev:rp,qty:0,tag:'기타',color:'#94a3b8',d:rv-rp,y:pct(rv,rp),
       detail:'<div style="font-size:12.5px;color:#4a5666;line-height:1.9">이 축으로 분류되지 않은 잔여분입니다. 회계 총액 <b>'+fmtW(_accF)+'</b>에서 위 항목 합계 <b>'+fmtW(aSum)+'</b>을 뺀 값으로,<br>기타 사업부(의료기기·B2C·고객만족)나 거래처가 지정되지 않은 거래가 여기에 들어갑니다.</div>'});
   })();
+  const _qMax=Math.max(1,...G.map(x=>Math.max(0,+x.val||0)));
   const _qrow=(x,idx)=>{
-    // 한 줄에 2개씩 배치 · 막대 제거(구성비·성장기여는 숫자로) — 여백을 줄이고 한 화면에 더 담기 위함
     const contrib=x.d>0?Math.round(x.d/totGrowth*100):0;
     const share=_gvAll>0?(x.val/_gvAll*100):0;
-    const row='<div class="qd-c'+(qState.tab==='prod'?' sub':'')+'" onclick="qToggle('+idx+')">'+
-      '<span class="n"><span class="dl-dot" style="display:inline-block;margin-right:6px;background:'+_yoyCol(x.y)+'"></span>'+esc(x.name)+
-        ((x.tag&&qState.tab!=='prod')?' <span class="tg">'+esc(x.tag)+'</span>':'')+
-        ' <span class="sh">'+share.toFixed(1)+'%'+(contrib>=5?' · 기여 '+contrib+'%':'')+'</span></span>'+
+    // 이름과 숫자 사이 빈 공간은 구성비 막대로 채운다(최대 항목 대비)
+    const barw=Math.max(1,Math.min(100,(+x.val||0)/_qMax*100));
+    // 국가 코드는 국기+한국어명으로
+    const tg=(x.tag&&QGEO[x.tag])?(QGEO[x.tag][0]+' '+QGEO[x.tag][1]):x.tag;
+    const lead=x.flag?'<span class="fl">'+x.flag+'</span>':'<span class="dl-dot" style="background:'+_yoyCol(x.y)+'"></span>';
+    // 거래처는 인라인 펼침 대신 상세 모달
+    const click=(qState.tab==='cust'&&x.name!=='미분류')?('qCustOpen('+_jsArg(x.name)+')'):('qToggle('+idx+')');
+    const row='<div class="qd-c'+(qState.tab==='prod'?' sub':'')+'" onclick="'+click+'">'+
+      '<span class="n">'+lead+'<span class="nm">'+esc(x.name)+'</span>'+
+        ((tg&&qState.tab!=='prod'&&!x.flag)?'<span class="tg">'+esc(tg)+'</span>':'')+
+        '<span class="nb"><i style="width:'+barw.toFixed(0)+'%"></i></span>'+
+        '<span class="sh">'+share.toFixed(1)+'%'+(contrib>=5?' · 기여 '+contrib+'%':'')+'</span></span>'+
       '<span class="v">'+fmtW(x.val)+(x.qty>0?'<b'+(x.qtyNote?' title="'+esc(x.qtyNote)+' 기준"':'')+'>'+x.qty.toLocaleString()+'대</b>':'')+'</span>'+
       '<span class="p">'+fmtW(x.prev||0)+'</span>'+
       '<span class="y" style="color:'+_yoyCol(x.y)+'">'+(x.y===null?'신규':arrow(x.y))+'</span>'+
@@ -3175,6 +3194,8 @@ function _jsArg(v){
   return "'"+t+"'";
 }
 function qToggle(i){ qState.open[i]=!qState.open[i]; renderQuery(); }
+// 매출상세 거래처 행 → 상세 모달(월별 차트·제품 구성·거래 원장까지)
+function qCustOpen(nm){ openCustInfo(_custRows.push(nm)-1); }   // 기존 캐시를 덮지 않게 뒤에 붙인다
 function qFold(k){ qState.fold[k]=!qState.fold[k]; renderQuery(); }
 
 // ── 거래처별 축 — 국내 병원(소모품+장비 병합) + 해외 거래처 ────────────────
@@ -3384,7 +3405,7 @@ function _qGeo(){
         (incDev?miniBar('장비',devV,Math.max(consV,devV,1),DEV_PURPLE):'')+(incCons?miniBar('소모품',consV,Math.max(consV,devV,1),CONS_CYAN):'')+'</div>'+
         '<div class="col-md-6"><div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">국내 제품 Top</div>'+_domTopProds(f,t,qState.cat)+'</div></div>';
       const _dq=incDev?Object.values(DEVICE.prodMoQty2026||{}).reduce((s,mo)=>s+sumMo(mo,f,t),0):0;
-      out.push({name:'🇰🇷 국내',tag:'전체',val:dom,prev:domPrev,qty:_dq,color:DOM_BLUE,detail});
+      out.push({name:'국내',flag:'🇰🇷',tag:'전체',val:dom,prev:domPrev,qty:_dq,color:DOM_BLUE,detail});
     }
   }
   if(qState.ch!=='dom'){
@@ -3399,7 +3420,7 @@ function _qGeo(){
       const pmax=prods.length?prods[0][1]:1;
       const detail='<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">제품별 (상위)</div>'+
         (prods.length?prods.slice(0,5).map(p=>miniBar(p[0],p[1],pmax,INTL_TEAL)).join(''):'<span style="font-size:12px;color:#94a3b8">데이터 없음</span>');
-      out.push({name:cn,tag:'해외',val,prev,qty:_qty,color:INTL_TEAL,detail});
+      out.push({name:(QGEO[cn]?QGEO[cn][1]:cn),flag:(QGEO[cn]?QGEO[cn][0]:'🌐'),tag:'해외',val,prev,qty:_qty,color:INTL_TEAL,detail});
     });
   }
   return out.sort((a,b)=>b.val-a.val);

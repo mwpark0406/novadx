@@ -191,11 +191,13 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 /* 그룹 소계는 전폭이지만 숫자는 왼쪽 열의 당기·전년·YoY 자리에 정확히 맞아야 한다.
    컨테이너에 좌우 padding 을 주면 트랙이 안쪽으로 밀려 아래 항목과 어긋나므로
    부모 트랙을 그대로 물려받고(subgrid) 여백은 각 칸에 준다. */
-/* 항목이 적은 축(제품 6개·지역 9개·담당자 12개)은 1열로 — 2열로 쪼개면
-   소계와 상세가 좌우로 뒤섞여 어느 소계에 속한 항목인지 읽히지 않는다.
-   거래처처럼 항목이 많은 축만 2열을 쓴다. */
-.qd-hd.one,.qd-grid.one{grid-template-columns:minmax(0,1fr) 96px 78px 66px}
-.qd-hd.one .d2{display:none}
+/* 소계가 있는 축(제품별)은 그룹을 통째로 좌우에 나란히 놓는다.
+   행을 좌→우로 흘리면 소계 아래 항목이 양쪽으로 흩어져 소속이 안 읽히고,
+   1열로 쌓으면 세로가 두 배가 된다. 그룹 블록 단위로 나누면 둘 다 해결된다. */
+.qd-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 26px;align-items:start}
+.qd-blk{display:grid;grid-template-columns:minmax(0,1fr) 96px 78px 66px}
+.qd-blk .det{grid-column:1/-1}
+@media(max-width:1240px){.qd-pair{grid-template-columns:1fr}}
 /* 소계 행 — 상세 행과 확실히 구분되게(배경·라벨) */
 .qd-gh{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:center;background:#eef3f8;font-weight:800;padding:0;font-size:13px}
 .qd-gh .gl{font-size:10px;font-weight:700;color:#fff;background:#94a3b8;border-radius:3px;padding:1px 5px;margin-left:7px;vertical-align:1px}
@@ -3139,23 +3141,24 @@ function renderQuery(){
       if(!list.length)return;
       const gv=list.reduce((s,x)=>s+x.val,0), gp=list.reduce((s,x)=>s+(x.prev||0),0), gd=gv-gp, gy=pct(gv,gp);
       const gq=list.reduce((s,x)=>s+(x.qty||0),0);
-      _rowsHtml+='<div class="qd-gh" style="border-top:2px solid '+gcol+'">'+
+      _rowsHtml+='<div class="qd-blk"><div class="qd-gh" style="border-top:2px solid '+gcol+'">'+
         '<span style="color:'+gcol+'"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+gcol+';margin-right:7px"></span>'+gname+'<span class="gl">소계</span>'+
           ' <span style="font-size:10.5px;font-weight:500;color:#94a3b8">'+list.length+'개 · 비중 '+(tot>0?Math.round(gv/_accF*100):0)+'%'+(gq>0?' · '+gq.toLocaleString()+'대':'')+'</span></span>'+
         '<span class="v">'+fmtW(gv)+(gq>0?'<b>'+gq.toLocaleString()+'대</b>':'')+'</span>'+
         '<span class="p">'+fmtW(gp)+'</span>'+
         '<span class="y" style="color:'+_yoyCol(gy)+'">'+(gy===null?'신규':arrow(gy))+'<b>'+fmtD(gd)+'</b></span></div>';
-      _rowsHtml+=_qFold(list,idxOf,gname);
+      _rowsHtml+=_qFold(list,idxOf,gname)+'</div>';
     });
+    _rowsHtml='<div class="qd-pair">'+_rowsHtml+'</div>';
   } else {
     _rowsHtml=_qFold(G,new Map(G.map((x,i)=>[x,i])),qState.tab);
   }
   // 거래처 탭은 표 위에 신규·중단 요약을 먼저 보여줌(전사 종합에 없는 관점)
   if(qState.tab==='cust') _rowsHtml='<div class="qd-gh flow">'+_qCustFlow()+'</div>'+_rowsHtml;
-  // 항목이 적으면 1열(소계-상세 관계가 세로로 이어져 읽힌다), 많으면 2열(밀도)
-  const _one=G.length<=14;
-  const _rowsEl=document.getElementById('q-rows'); _rowsEl.className='qd-grid'+(_one?' one':'');
-  const _hdEl=document.querySelector('.qd-hd'); if(_hdEl) _hdEl.className='qd-hd'+(_one?' one':'');
+  // 소계가 있는 축은 그룹 블록을 좌우로, 나머지는 행을 좌→우로 흘린다
+  const _rowsEl=document.getElementById('q-rows');
+  _rowsEl.className=(qState.tab==='prod')?'qd-wrap':'qd-grid';
+  const _hdEl=document.querySelector('.qd-hd'); if(_hdEl) _hdEl.className='qd-hd';
   _rowsEl.innerHTML=_rowsHtml||'<div class="text-muted" style="font-size:12px;padding:14px">데이터 없음</div>';
   const top3=G.filter(x=>x.d>0).sort((a,b)=>b.d-a.d).slice(0,3).reduce((s,x)=>s+x.d,0);
   document.getElementById('q-insight').innerHTML='<i class="bi bi-lightbulb-fill me-1" style="color:#f59e0b"></i>조회 '+items.length+'개 중 <b>'+grewN+'개 성장</b> · 성장의 <b>'+Math.round(top3/totGrowth*100)+'%</b>가 상위 3개에서 발생'+(bot.length?(' · <b style="color:#dc2626">'+esc(bot[0].name)+(bot[1]?' · '+esc(bot[1].name):'')+'</b> 역성장 → 점검'):'');

@@ -2098,7 +2098,7 @@ async function loadOps(){
 function _hasv(v){ return !!(v&&String(v).trim()&&String(v).trim()!=='-'); }
 function opsKpi(){
   const o={};
-  // 미수채권: wt-receivables와 동일 정의 — 수정분(ar_kr_edits의 type) 반영 후 집계
+  // 미수채권: 미수금 사이트와 동일 정의 — 수정분(ar_kr_edits의 type) 반영 후 집계
   if(OPS.ar&&Array.isArray(OPS.ar.rows)){
     const ED=OPS.arEdits||{};
     const R=OPS.ar.rows.map(r=>{ const e=ED[r.rid]; if(!e||e.type===undefined||e.type==='')return r; const c=Object.assign({},r); c.type=e.type; return c; });
@@ -4343,7 +4343,7 @@ function renderCorps(){
     '<div class="corp-hero" style="background:linear-gradient(135deg,#eef5ff 0%,#f7fbff 55%,'+sel.cp.c+'1f 140%);border:1px solid #e1e9f3">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
     '<span style="font-size:14px;font-weight:800"><i class="bi '+sel.cp.i+' me-1" style="color:'+sel.cp.c+'"></i>'+sel.cp.n+' 상세 <span style="font-size:11px;font-weight:500;color:var(--hero-sub)">· 1~'+t+'월 누적 · 실적 = 회계 + 미반영</span></span>'+
-    (sel.cp.n==='중국법인'?'<button class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:700;font-size:11.5px" onclick="goSite(\'https://mwpark0406.github.io/novadx/wtj-management/\',\'\')"><i class="bi bi-box-arrow-up-right me-1"></i>중국법인 관리 사이트</button>':'')+
+    (sel.cp.n==='중국법인'?'<button class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:700;font-size:11.5px" onclick="goSite(\'https://mwpark0406.github.io/novadx/cn.html\',\'\')"><i class="bi bi-box-arrow-up-right me-1"></i>중국법인 관리 사이트</button>':'')+
     '</div>'+
     '<div style="display:flex;gap:20px;align-items:baseline;margin-top:8px;flex-wrap:wrap">'+
     '<span style="font-size:1.8rem;font-weight:750;font-variant-numeric:tabular-nums">'+fmtW(sel.act)+'</span>'+

@@ -33,9 +33,12 @@ for (const [file, rules] of Object.entries(conf.files || {})) {
 
 console.log(`회귀 검사 ${checked}건 실행`);
 
+// 금칙어 검사도 같은 단계에서 함께 돌린다(CI 워크플로를 건드리지 않기 위해)
+function words() { console.log(''); return require('./check-words.js').report(); }
+
 if (!failed.length) {
   console.log('모두 통과 — 고쳐둔 로직이 그대로 남아 있습니다.');
-  process.exit(0);
+  process.exit(words());
 }
 
 console.log('');
@@ -48,4 +51,5 @@ for (const f of failed) {
 }
 console.log('');
 console.log('의도한 변경이라면 .github/guards.json 의 해당 항목을 새 코드에 맞게 고치세요.');
+words();
 process.exit(1);

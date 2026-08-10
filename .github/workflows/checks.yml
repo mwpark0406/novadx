@@ -1,0 +1,20 @@
+name: checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 문법 검사
+        run: node .github/check-syntax.js
+      - name: 회귀 검사
+        run: node .github/check-guards.js

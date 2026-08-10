@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>미수금 관리 · 국내</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23b45309'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>₩</text></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script>
+/* ═══ Chart.js y축 눈금 최적화 (WT_YFIT) ══════════════════════════════
+   문제: 데이터가 25~30억 구간인데 y축이 0~35억 → 아래 절반이 빈 공간.
+   해결: 선/추이 차트는 데이터 min~max 기준 ±15% 패딩(0 강제 안 함),
+         막대·누적·혼합 차트는 면적 왜곡 방지를 위해 0 기준 유지 + 상단 12% 여백만.
+   사용: Chart 생성 시 설정 객체 전체를 _yFit( ... ) 으로 감싼다.
+   기존 ticks.callback(억/만원 포맷)·grid·stacked 등은 건드리지 않고
+   suggestedMin / suggestedMax 만 병합한다. (min·max가 명시된 축은 제외) */
+function _yNums(arr){
+  var o=[];
+  (arr||[]).forEach(function(v){
+    if(v&&typeof v==='object') v=(v.y!==undefined?v.y:v.value);
+    if(v===null||v===undefined||v==='') return;
+    var n=Number(v); if(isFinite(n)) o.push(n);
+  });
+  return o;
+}
+function _ySum(arrs){
+  var n=0; (arrs||[]).forEach(function(a){ if(a&&a.length>n) n=a.length; });
+  var out=[];
+  for(var i=0;i<n;i++){ var s=0; (arrs||[]).forEach(function(a){ var v=Number(a&&a[i]); if(isFinite(v)) s+=v; }); out.push(s); }
+  return out;
+}
+/* 선(line)·추이 차트용 — 0에서 시작하지 않고 데이터 범위에 맞춤 */
+function _yScale(datasets){
+  var a=[]; (datasets||[]).forEach(function(d){ a=a.concat(_yNums(d&&d.data?d.data:d)); });
+  if(!a.length) return {};
+  var mn=Math.min.apply(null,a), mx=Math.max.apply(null,a), rg=mx-mn, lo, hi;
+  if(rg>0){ lo=mn-rg*0.15; hi=mx+rg*0.15; }
+  else if(mx!==0){ var m=Math.abs(mx); lo=mn-m*0.1; hi=mx+m*0.1; }   // 전부 같은 값
+  else return {suggestedMin:0, suggestedMax:1};                       // 전부 0
+  if(mn>=0) lo=Math.max(0,lo);                                        // 양수 데이터는 음수로 안 내려감
+  if(!isFinite(lo)||!isFinite(hi)||hi<=lo) return {};
+  return {suggestedMin:Math.round(lo*1e4)/1e4, suggestedMax:Math.round(hi*1e4)/1e4};
+}
+/* 막대(bar)·누적·혼합 차트용 — 0 기준 유지, 상단 여백만 */
+function _yScale0(datasets){
+  var a=[]; (datasets||[]).forEach(function(d){ a=a.concat(_yNums(d&&d.data?d.data:d)); });
+  var o={beginAtZero:true};
+  if(!a.length) return o;
+  var mx=Math.max.apply(null,a), mn=Math.min.apply(null,a);
+  if(mx>0) o.suggestedMax=Math.round(mx*1.12*1e4)/1e4;
+  if(mn<0) o.suggestedMin=Math.round(mn*1.12*1e4)/1e4;
+  return o;
+}
+/* Chart 설정 객체를 받아 y축(y, y1, y2 …)마다 위 규칙을 적용해 그대로 반환 */
+function _yFit(cfg){
+  try{
+    if(!cfg||!cfg.data) return cfg;
+    var ds=cfg.data.datasets||[]; if(!ds.length) return cfg;
+    if(/^(doughnut|pie|polarArea|radar|bubble|scatter)$/.test(cfg.type||'')) return cfg;
+    cfg.options=cfg.options||{};
+    if((cfg.options.indexAxis||'x')!=='x') return cfg;                 // 가로막대는 대상 아님
+    cfg.options.scales=cfg.options.scales||{};
+    var sc=cfg.options.scales;
+    var keys=Object.keys(sc).filter(function(k){ return /^y/i.test(k); });
+    if(!keys.length){ sc.y={}; keys=['y']; }
+    keys.forEach(function(k){
+      var ax=sc[k]; if(!ax||typeof ax!=='object') return;
+      if(ax.min!==undefined||ax.max!==undefined) return;               // 명시 범위 존중
+      if(ax.type==='category'||ax.display===false) return;
+      var mine=ds.filter(function(d){ return (d.yAxisID||'y')===k; });
+      if(!mine.length) return;
+      var typeOf=function(d){ return d.type||cfg.type||'bar'; };
+      var hasBar=mine.some(function(d){ return typeOf(d)==='bar'; });
+      if(!hasBar){                                                     // 선 전용 축
+        var r=_yScale(mine);
+        if(ax.beginAtZero===true) delete ax.beginAtZero;
+        if(r.suggestedMin!==undefined&&ax.suggestedMin===undefined) ax.suggestedMin=r.suggestedMin;
+        if(r.suggestedMax!==undefined&&ax.suggestedMax===undefined) ax.suggestedMax=r.suggestedMax;
+        return;
+      }
+      // 막대 포함(혼합·누적) → 0 기준. 누적이면 스택 합계로 상단 여백 계산
+      var groups={}, uid=0;
+      mine.forEach(function(d){
+        var stacked = typeOf(d)==='bar' && ax.stacked!==false && (ax.stacked===true || d.stack!==undefined);
+        var key = stacked ? ('s:'+(d.stack||'_')) : ('u:'+(uid++));
+        (groups[key]=groups[key]||[]).push(d.data||[]);
+      });
+      var series=Object.keys(groups).map(function(key){
+        var g=groups[key]; return g.length>1?_ySum(g):g[0];
+      });
+      var r0=_yScale0(series);
+      if(ax.beginAtZero===undefined) ax.beginAtZero=true;
+      if(r0.suggestedMax!==undefined&&ax.suggestedMax===undefined) ax.suggestedMax=r0.suggestedMax;
+      if(r0.suggestedMin!==undefined&&ax.suggestedMin===undefined) ax.suggestedMin=r0.suggestedMin;
+    });
+  }catch(e){ }
+  return cfg;
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--line:#e5e7eb;--line2:#f1f3f5;--ink:#111827;--body:#475569;--muted:#6b7280;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--sh:0 1px 3px rgba(16,42,67,.05)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{color-scheme:light}
+body{font-family:'Noto Sans KR','Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;background:var(--bg);color:var(--body);font-size:14px;-webkit-font-smoothing:antialiased;letter-spacing:-.1px;font-variant-numeric:tabular-nums}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+.hidden{display:none!important}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f6f7f9;color:#64748b;font-size:14px;z-index:50}
+#app{display:none}
+/* 상단 헤더(일보 스타일) */
+.hdr{position:sticky;top:0;z-index:40;background:#fff;color:#111827;border-bottom:1px solid #e5e7eb}
+.hdr-in{max-width:none;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .lg{width:37px;height:37px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 5px 14px rgba(37,99,235,.3)}
+.brand b{color:#111827;font-size:14.5px;font-weight:800;display:block;line-height:1.1}.brand small{display:block;color:#64748b;font-size:10.5px;margin-top:1px}
+.hdr-r{display:flex;align-items:center;gap:9px;margin-left:auto}
+.hbtn{background:#fff;border:1px solid #dbe3ec;border-radius:9px;padding:8px 12px;color:#475569;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.hbtn:hover{background:#eff4fb;border-color:#a9c4e8;color:#2563eb}
+.acctbtn{background:#fff;border:1px solid #dbe3ec;border-radius:11px;padding:4px 11px 4px 4px;display:flex;align-items:center;gap:8px;color:#334155}
+.acctbtn:hover{background:#eff4fb;border-color:#a9c4e8}
+.acctbtn .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.acctbtn .who{text-align:left;line-height:1.2}.acctbtn .nm{font-size:12px;font-weight:700;color:#111827;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.acctbtn .em{font-size:10px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw-wrap{position:relative}
+.dd{display:none;position:absolute;top:122%;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 16px 42px rgba(16,42,67,.16);z-index:50;padding:6px;min-width:220px}
+.dd.open{display:block}
+.dd>button{width:100%;text-align:left;background:transparent;border:0;border-radius:8px;padding:9px 11px;font-size:13px;color:#475569;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer}
+.dd>button:hover{background:#f1f5f9;color:#2563eb}
+.sw-item{border-radius:8px;padding:9px 10px;display:flex;align-items:center;gap:9px;color:#475569;font-size:12.5px;cursor:pointer;font-weight:600}
+.sw-item:hover{background:#f1f5f9;color:#2563eb}
+.sw-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:19px;color:#fff;border-radius:6px;font-size:10px;font-weight:700;padding:0 5px;flex-shrink:0}
+.nav{max-width:none;margin:0 auto;padding:0 16px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-top:1px solid #eef2f7}
+.nav::-webkit-scrollbar{display:none}
+.nav a{display:flex;align-items:center;gap:7px;padding:11px 14px 12px;font-size:13.5px;font-weight:600;color:#64748b;border-bottom:2.5px solid transparent;white-space:nowrap;cursor:pointer;text-decoration:none}
+.nav a .ico{font-size:15px}
+.nav a:hover{color:#111827}
+.nav a.active{color:#2563eb;border-bottom-color:#2563eb}
+/* 메인 */
+#main{max-width:none;min-height:60vh}
+.pagetitle{padding:22px 24px 2px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pagetitle h2{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+.pagetitle .desc{color:var(--muted);font-size:12.5px;margin-top:4px}
+.wrap{padding:22px 30px 60px}
+.sec{font-size:15px;font-weight:700;color:var(--ink);margin:6px 0 14px;display:flex;align-items:center;gap:8px}
+.hint{font-size:11.5px;color:var(--muted);font-weight:500}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:20px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--sh)}
+.kpi.clk{cursor:pointer}.kpi.clk:hover{border-color:#cbd5e1}
+.kpi .l{font-size:11.5px;color:var(--muted);font-weight:500}
+.kpi .v{font-size:22px;font-weight:800;color:var(--ink);margin-top:6px;line-height:1}
+.kpi .s{font-size:11px;margin-top:6px;font-weight:600;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--sh);margin-bottom:18px}
+.up{color:var(--ok)}.dn{color:var(--bad)}.mut{color:var(--muted)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--body);box-shadow:var(--sh)}
+.btn:hover{border-color:#cbd5e1}
+.btn.pri{background:#0f172a;color:#fff;border-color:#0f172a}
+.btn.warn{background:#b45309;color:#fff;border-color:#b45309}
+.sel,.inp{border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;background:#fff;color:var(--body)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.bar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;position:sticky;top:100px;z-index:20;background:var(--bg);padding:8px 0}
+/* 표 */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.dt{width:100%;border-collapse:collapse;font-size:12.5px}
+.dt th,.dt td{border-bottom:1px solid var(--line2);padding:8px 10px;text-align:right;white-space:nowrap}
+.dt th{color:var(--muted);font-weight:600;font-size:11px;background:#fafbfc;position:sticky;top:0}
+.dt th.sortable{cursor:pointer}.dt th.sortable:hover{color:var(--ink)}
+.dt td.l,.dt th.l{text-align:left}
+.dt td.l b{color:var(--ink);font-weight:600}
+.dt tr.clk{cursor:pointer}.dt tr.clk:hover td{background:#fdf8f1}
+.dt .memo{max-width:260px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+table.rt{width:100%;border-collapse:collapse;font-size:12.5px;min-width:700px}
+.rt th,.rt td{border:1px solid var(--line);padding:7px 10px;text-align:right;white-space:nowrap}
+.rt thead th{background:#eef2f6;color:#475569;font-weight:700;font-size:11.5px;text-align:center}
+.rt td.lbl,.rt th.lbl{text-align:left}
+.rt tr.grand td{background:#0f172a;color:#fff;font-weight:800}
+.rt tr.hl:hover td{background:#fdf8f1;cursor:pointer}
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:70;padding:24px}
+.modal.open{display:flex}
+.mbox{background:#fff;border-radius:18px;width:min(760px,100%);max-height:90vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.mhd{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 22px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+.mhd h3{font-size:17px;color:var(--ink);font-weight:800}
+.mhd .x{border:0;background:#f1f3f5;width:30px;height:30px;border-radius:8px;color:#64748b;font-size:16px;flex-shrink:0}
+.mbody{padding:18px 22px 24px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 16px;margin-bottom:14px}
+.fld label{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.fld .fv{font-size:13px;color:var(--ink);font-weight:600;word-break:break-all}
+.fld input,.fld select,.fld textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px}
+.fld textarea{resize:vertical;min-height:56px}
+.editable-note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:12px;color:#92400e;margin-bottom:14px}
+/* 로그인 */
+#login{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#292018);z-index:60;padding:16px}
+.lc{background:#fff;border-radius:18px;padding:40px 34px;width:350px;max-width:100%;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.lc h1{font-size:18px;text-align:center;color:#0f172a}.lc .sub{text-align:center;color:#94a3b8;font-size:13px;margin:4px 0 22px}
+.lc input{width:100%;padding:12px 14px;border:1px solid #e8ebf0;border-radius:10px;margin-bottom:11px}
+.lc button{width:100%;padding:12px;border:0;border-radius:10px;background:#b45309;color:#fff;font-weight:700}
+#login-err{color:#b91c1c;font-size:12.5px;text-align:center;margin-top:10px;display:none}
+/* 토스트 */
+#toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:99;display:none;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+/* 임원 보고(인쇄) */
+.rpt{max-width:none}
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 40px;align-items:start}
+.qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;align-items:start}
+@media(max-width:1150px){.rpt-grid,.qa-grid{display:block}}
+@media print{.rpt-grid,.qa-grid{display:block}}
+.rpt h1{font-size:20px;color:var(--ink);text-align:center;margin-bottom:2px}
+.rpt .sub{text-align:center;color:var(--muted);font-size:12.5px;margin-bottom:22px}
+.rpt h4{font-size:14.5px;color:var(--ink);margin:22px 0 10px;padding-left:9px;border-left:4px solid var(--brand)}
+.rpt .sumline{font-size:13px;color:var(--ink);padding:6px 0;line-height:1.55}
+.rpt .concl{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--ink);font-weight:600;line-height:1.6;margin-top:18px}
+@media print{
+  .hdr,.pagetitle .actions,#pdf-fab,#wt-fb-btn,#wt-fb-panel,.noprint{display:none!important}
+  body{background:#fff}
+  .wrap{padding:0}
+  .card{border:0;box-shadow:none;padding:8px 0}
+  #main{max-width:100%}
+}
+#pdf-fab{position:fixed;right:18px;bottom:18px;z-index:9990;background:#0f172a;color:#fff;border:0;border-radius:24px;padding:10px 16px;font-size:12.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:6px}
+canvas.chart{max-height:300px}
+/* 잔여 미수금 히어로 + 처리 레인 */
+.hero{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 24px;box-shadow:var(--sh);margin-bottom:16px}
+.hero .hv{font-size:38px;font-weight:800;color:var(--ink);line-height:1}
+.hero .formula{font-size:12.5px;color:var(--muted);margin-top:8px}
+.hero .formula b{color:var(--ink)}
+.sbar{display:flex;height:28px;border-radius:9px;overflow:hidden;margin-top:14px;border:1px solid var(--line)}
+.sbar>div{cursor:pointer;min-width:6px;transition:opacity .15s}
+.sbar>div:hover{opacity:.8}
+.sbar-leg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-top:10px}
+.sbar-leg .li{display:flex;align-items:center;gap:6px;cursor:pointer}
+.sbar-leg .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;margin-bottom:18px}
+.lane{background:#fff;border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:14px;padding:14px 16px 10px;box-shadow:var(--sh)}
+.lane .ln-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:800;color:var(--ink);font-size:13.5px}
+.lane .ln-amt{font-size:20px;font-weight:800;white-space:nowrap}
+.lane .ln-sub{font-size:11px;color:var(--muted);margin:3px 0 8px}
+.ln-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:12.5px;cursor:pointer;color:var(--body)}
+.ln-row:last-child{border-bottom:0}
+.ln-row:hover{background:#f8fafc}
+.ln-row b{color:var(--ink);white-space:nowrap}
+.ln-row .zero{color:var(--muted);font-weight:600}
+/* 회계 요약 스트립 */
+.accstrip{display:flex;gap:22px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 18px;box-shadow:var(--sh);margin-bottom:18px;font-size:12.5px;color:var(--muted)}
+.accstrip b{color:var(--ink);font-size:14px;margin-left:4px}
+.accstrip .as{cursor:pointer}
+.accstrip .as:hover b{color:var(--brand)}
+/* 조치 필요(액션) 카드 */
+.acts{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-bottom:16px}
+.act{background:#fff;border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:12px;padding:12px 14px;box-shadow:var(--sh);cursor:pointer}
+.act:hover{border-color:#cbd5e1;border-left-color:var(--brand)}
+.act .t{font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px}
+.act .n{font-size:19px;font-weight:800;color:var(--ink);margin-top:5px}
+.act .d{font-size:11px;color:var(--muted);margin-top:3px}
+/* 진행률 바 */
+.prog{height:10px;background:#f1f5f9;border-radius:6px;overflow:hidden;margin:6px 0}
+.prog>div{height:100%;border-radius:6px;background:#2563eb}
+/* 주간 변동 배지 */
+.delta-pill{display:inline-flex;align-items:center;gap:4px;border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:700}
+/* Q&A */
+.qa{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.qa summary{padding:10px 14px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;background:#fafbfc;list-style:none}
+.qa summary::before{content:'Q. '}
+.qa .a{padding:10px 14px;font-size:12.5px;line-height:1.65;color:var(--body);border-top:1px solid var(--line2)}
+@media print{.qa{page-break-inside:avoid}.qa[open] summary{background:#fff}.rpt h4{page-break-after:avoid}.rt{page-break-inside:avoid}details.qa{display:block}.card{page-break-inside:auto}}
+@media(max-width:820px){
+  .hdr-in{padding:10px 14px;gap:10px}
+  .brand small{display:none}
+  .acctbtn .who{display:none}
+  .nav{padding:0 8px}.nav a{padding:10px 11px;font-size:12.5px}
+  .pagetitle{padding:16px 14px 2px}.wrap{padding:14px 14px 60px}
+  body{overflow-x:hidden}
+  .card{padding:14px}
+  .modal{padding:0}
+  .mbox{width:100%;height:100%;max-height:100%;border-radius:0}
+  .fgrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .brand b{font-size:13px}
+  .hbtn{padding:7px 9px;font-size:11.5px}
+  .pagetitle h2{font-size:19px}
+  .kpi{padding:12px 13px}
+  .kpi .v{font-size:19px}
+  .card{padding:12px}
+  .sec{font-size:14px}
+  .bar-row{gap:8px}
+  .bar-row .inp,.bar-row .sel{flex:1 1 140px}
+  .fgrid{grid-template-columns:1fr}
+  .mhd{padding:16px 16px 12px}.mbody{padding:14px 16px 18px}
+}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:7px 12px;font-size:12.5px;cursor:pointer;color:var(--ink)}
+.seg button.on{background:#0f172a;color:#fff}
+</style>
+<script>/* WT_ERRLOG_V1 — 공통 오류수집+요청함 (자동주입 스니펫, 개별 수정 금지) */
+(function(){
+var U='https://bdkurlqmfsswgeiujyev.supabase.co/rest/v1/';
+var K='sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3';
+var SITE=(location.pathname.split('/')[1]||'root');
+var PAGE=(location.pathname.split('/').slice(2).join('/')||'index.html');
+function wtPost(t,b){try{fetch(U+t,{method:'POST',headers:{'apikey':K,'Authorization':'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(b)});}catch(e){}}
+function wtEmail(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('sb-')===0&&k.indexOf('auth-token')>-1){var v=JSON.parse(localStorage.getItem(k)||'{}');return (v.user&&v.user.email)||(v.currentSession&&v.currentSession.user&&v.currentSession.user.email)||'';}}}catch(e){}return '';}
+var wtSeen={},wtN=0;
+window.addEventListener('error',function(e){if(!e||!e.message)return;var key=e.message+'|'+(e.filename||'')+'|'+e.lineno;if(wtSeen[key]||wtN>=10)return;wtSeen[key]=1;wtN++;wtPost('site_errors',{site:SITE,page:PAGE,href:location.href.slice(0,500),message:String(e.message).slice(0,500),source:String(e.filename||'').slice(0,300),line:e.lineno||null,col:e.colno||null,stack:(e.error&&e.error.stack)?String(e.error.stack).slice(0,1500):null,ua:navigator.userAgent.slice(0,300),user_email:wtEmail()||null});},true);
+window.addEventListener('unhandledrejection',function(e){var r=(e&&e.reason)||{};var m=('unhandledrejection: '+(r.message||String(r))).slice(0,500);if(wtSeen[m]||wtN>=10)return;wtSeen[m]=1;wtN++;wtPost('site_errors',{site:SITE,page:PAGE,href:location.href.slice(0,500),message:m,stack:r.stack?String(r.stack).slice(0,1500):null,ua:navigator.userAgent.slice(0,300),user_email:wtEmail()||null});});
+function wtFb(){
+if(document.getElementById('wt-fb-btn'))return;
+var b=document.createElement('div');b.id='wt-fb-btn';b.textContent='🙋 요청·신고';
+b.style.cssText='position:fixed;right:18px;bottom:64px;z-index:99990;background:#334155;color:#e2e8f0;padding:7px 13px;border-radius:20px;font-size:12px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);font-family:inherit;user-select:none;opacity:.85';
+b.onmouseover=function(){b.style.opacity='1';};b.onmouseout=function(){b.style.opacity='.85';};
+var p=document.createElement('div');p.id='wt-fb-panel';
+p.style.cssText='display:none;position:fixed;right:18px;bottom:108px;z-index:99991;width:min(320px,90vw);background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,.5);font-family:inherit';
+p.innerHTML='<div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:8px">요청 · 불편신고</div><textarea id="wt-fb-msg" placeholder="불편한 점이나 요청사항을 적어주세요" style="width:100%;height:88px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:12px;padding:8px;resize:none;box-sizing:border-box"></textarea><div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end"><button id="wt-fb-cancel" style="background:none;border:1px solid #475569;color:#94a3b8;padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer">닫기</button><button id="wt-fb-send" style="background:#0d9488;border:none;color:#fff;padding:5px 14px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600">전송</button></div>';
+document.body.appendChild(b);document.body.appendChild(p);
+b.onclick=function(){p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block'){var t=document.getElementById('wt-fb-msg');if(t)t.focus();}};
+document.getElementById('wt-fb-cancel').onclick=function(){p.style.display='none';};
+document.getElementById('wt-fb-send').onclick=function(){var t=document.getElementById('wt-fb-msg');var m=(t&&t.value||'').trim();if(!m)return;wtPost('site_feedback',{site:SITE,page:PAGE,message:m.slice(0,2000),reporter:wtEmail()||null});p.innerHTML='<div style="color:#5eead4;font-size:13px;text-align:center;padding:14px 4px">접수되었습니다! 감사합니다 🙏</div>';setTimeout(function(){p.style.display='none';p.remove();b.remove();wtFb();},1600);};
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',wtFb);}else{wtFb();}
+})();</script>
+<style>
+/* == WT-DESIGN-POLISH-v1 : 공통 디자인 정제(안전 패스) == */
+.card,.kpi-card,.stat-card{border-radius:16px!important;box-shadow:none!important;border:1px solid var(--line,#e6e9ef)!important} /*WT-DEEP-v2*/
+.modal-content{border-radius:18px}
+table{font-variant-numeric:tabular-nums}
+.kpi-value,.kpi-num,.stat-num,.stat-value,.big-num,.num-lg{font-variant-numeric:tabular-nums;letter-spacing:-.015em}
+.form-control:focus,.form-select:focus{border-color:var(--brand,#2563eb);box-shadow:0 0 0 3px rgba(37,99,235,.12);outline:none}
+.btn{border-radius:8px}
+/* WT-DEEP-v3 프리미엄 타이포 일관 */
+.kpi-value,.lux-num,.stat-num,.stat-value,.metric-value,.metric-num,.big-num,.num-lg,.hero-num,.summary-num,.card-num{font-variant-numeric:tabular-nums;letter-spacing:-.018em}
+</style>
+<style id="wt-align-v1">
+/* ══ WT-ALIGN-v1 : 정렬(오와 열)·시각품질·반응형 최종 보정 레이어 ══
+   · 배경/테마 무변경(라이트 고정) · 기능/데이터 무관 · 마지막 캐스케이드 */
+
+/* ── 1) 카드 그리드 : 행 높이·기준선(baseline) 정렬 ── */
+.grid{align-items:stretch}
+.kpi{display:flex;flex-direction:column;min-width:0;height:100%;border-radius:16px;box-shadow:none}
+.kpi .l{min-height:2.3em;display:flex;align-items:flex-start;flex-wrap:wrap;gap:4px;line-height:1.3}
+.kpi .v{margin-top:auto;padding-top:8px;font-variant-numeric:tabular-nums;letter-spacing:-.018em}
+.kpi .s{min-height:1.15em;line-height:1.3}
+.act{display:flex;flex-direction:column;min-width:0;height:100%;border-radius:16px;box-shadow:none}
+.act .t{min-height:2.2em;align-items:flex-start;line-height:1.25}
+.act .n{font-variant-numeric:tabular-nums;letter-spacing:-.018em}
+.act .d{margin-top:auto;padding-top:5px;line-height:1.4}
+.kpi.clk:hover,.act:hover{border-color:#cbd5e1;background:#fcfdff}
+
+/* ── 2) 표 : thead↔tbody 정렬 일치 + 숫자 tabular ── */
+.dt,.rt{font-variant-numeric:tabular-nums}
+/* .rt : 본문 숫자=우측 → 머리글도 우측(라벨열은 기존 좌측 유지) */
+.rt thead th{text-align:right;vertical-align:middle}
+.rt thead th.lbl{text-align:left}
+.rt th,.rt td{vertical-align:middle}
+/* .dt : 머리글 기본 우측(본문과 동일), .l 은 좌측 — sticky 머리글 경계선 보정 */
+.dt thead th{background:#fafbfc;box-shadow:inset 0 -1px 0 var(--line);vertical-align:middle;z-index:3}
+.dt td{vertical-align:middle}
+.dt tbody tr:hover td{background:#fbfcfe}
+.dt tr.clk:hover td{background:#fdf8f1}
+.dt .memo{max-width:260px}
+/* 표 안 빈 상태 문구 규격 통일 */
+.dt tbody tr td[colspan]:not(.l):not(.lbl),.rt tbody tr td[colspan]:not(.l):not(.lbl){text-align:center;padding:26px 12px;color:var(--muted);font-weight:500;white-space:normal}
+
+/* ── 3) 필터바/액션바 : 컨트롤 높이 통일 ── */
+.bar-row{row-gap:8px}
+.bar-row .btn,.bar-row .inp,.bar-row .sel{height:34px;line-height:1;padding-top:0;padding-bottom:0}
+.bar-row .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.bar-row .seg{height:34px;align-items:stretch}
+.bar-row .seg button{display:inline-flex;align-items:center;padding:0 13px}
+.bar-row label{height:34px}
+.bar-row .hint{margin-left:auto;text-align:right}
+.pagetitle .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pagetitle .actions .btn{height:32px;display:inline-flex;align-items:center;gap:6px}
+
+/* ── 4) 섹션 여백·위계 일관화 ── */
+.sec{margin:0 0 14px;line-height:1.3}
+.card .sec:first-child{margin-top:0}
+.card+.card,.grid+.card,.card+.grid,.grid+.grid{margin-top:0}
+.rpt h4{margin:22px 0 10px}
+.rpt h4:first-of-type{margin-top:4px}
+
+/* ── 5) 진행률 바 / 배지 미세 정렬 ── */
+.prog{margin:7px 0 2px}
+.chip{vertical-align:middle;line-height:1.55}
+.delta-pill{line-height:1.4}
+.qa summary{line-height:1.45}
+
+/* ── 6) 모달 폼 정렬 ── */
+.fgrid{align-items:start}
+.fld{min-width:0}
+.mhd h3{line-height:1.35}
+
+/* ── 7) 반응형 : 가로 넘침 0 ── */
+@media(max-width:820px){
+  #main,.wrap{max-width:100%}
+  .tbl-scroll{max-width:100%}
+  canvas.chart{max-height:240px}
+}
+@media(max-width:640px){
+  .grid.kpis,.grid.acts{grid-template-columns:1fr}
+  .bar-row{position:static;padding:0 0 4px}
+  .bar-row .hint{margin-left:0;text-align:left;flex-basis:100%}
+  .bar-row .inp,.bar-row .sel{flex:1 1 100%;width:auto!important;min-width:0}
+  .bar-row .seg{width:100%}
+  .bar-row .seg button{flex:1}
+  table.rt{min-width:600px}
+  .dt .memo{max-width:150px}
+  .rpt-grid,.qa-grid{gap:0}
+}
+
+/* ── 8) 인쇄 : sticky 해제 ── */
+@media print{
+  .bar-row{position:static!important}
+  .dt thead th,.mhd{position:static!important;box-shadow:none!important}
+  .kpi,.act{box-shadow:none;break-inside:avoid}
+  .card{page-break-inside:auto}
+}
+</style>
+<style id="wt-contrast-v1">
+/* 저대비 텍스트 판독성 보정(WCAG 3:1 목표). 배경/레이아웃 무변경, 글자색만 상향 */
+[style*="color:#cbd5e1"],[style*="color:#d1d5db"],[style*="color:#e5e7eb"],[style*="color:#c9d2dd"],[style*="color:#dfe5ec"]{color:#8a97a8!important}
+[style*="color:#b3bdcc"],[style*="color:#9aa7b8"]{color:#68758a!important}
+[style*="color:#94a3b8"]{color:#6b7a90!important}
+.muted,.hint,.s,.sub,.desc,.note{color:#64748b}
+/* amber 대형 숫자는 가독 위해 한 톤 진하게(의미색 유지) */
+[style*="color:#f59e0b"]{color:#c2760a!important}
+</style>
+<style id="wt-mobile-v1">
+/* 가로 넘침 방지 — 배경·테마·기능 무변경, 축소·표 내부 스크롤만 허용 */
+/* 임원 보고 2단: 1fr 트랙의 auto 최소치가 표 min-width(700px)로 커져 데스크톱에서 넘치던 문제 */
+.rpt-grid,.qa-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.rpt-grid>*,.qa-grid>*{min-width:0}
+@media(max-width:820px){
+  /* 인라인 auto-fit 고정 최소폭 그리드 → 화면폭보다 커지지 않게 */
+  [style*="minmax(380px,1fr)"]{grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr))!important}
+  [style*="minmax(210px,1fr)"]{grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))!important}
+  [style*="minmax(200px,1fr)"]{grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))!important}
+  [style*="minmax(180px,1fr)"]{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))!important}
+}
+</style>
+<style id="wt-density-v1">
+/* ══════════════════════════════════════════════════════════════════════════
+   WT-DENSITY-V1 (2026-08-04) — 여백 압축 · 정보 밀도 상향 레이어
+   · 간격 전용: margin / padding / gap 만 조정. 배경·색상·테마 선언 없음.
+     다크모드 미디어쿼리(색상 선호도 질의) 미사용 — 라이트 고정.
+   · @media screen 로 감싸 인쇄(@media print) 스타일은 원본 그대로 둔다.
+   · 상단 헤더(.hdr)는 .bar-row 의 sticky top:100px 기준이므로 높이를 바꾸지 않는다.
+   · 모바일(≤768px)에서는 압축을 완화한다.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media screen{
+
+/* 1. 페이지 프레임 — 상단 여백 · 하단 빈 공간(60px) 축소 */
+.pagetitle{padding:14px 24px 2px}
+.wrap{padding:14px 26px 24px}
+.sec{margin:4px 0 9px}
+
+/* 2. 카드 · 그리드 */
+.grid{gap:11px}
+.card{padding:14px 16px;margin-bottom:12px}
+
+/* 3. KPI · 액션 카드 */
+.kpis{margin-bottom:12px}
+.kpi{padding:12px 14px}
+.kpi .v{margin-top:5px}
+.kpi .s{margin-top:4px}
+.acts{margin-bottom:11px}
+.act{padding:10px 12px}
+
+/* 4. 툴바 */
+.bar-row{margin-bottom:10px;padding:6px 0}
+
+/* 5. 표 행 높이 */
+.dt th,.dt td{padding:6px 9px}
+.rt th,.rt td{padding:5px 9px}
+
+/* 6. 모달 */
+.mhd{padding:14px 18px 11px}
+.mbody{padding:13px 18px 16px}
+.fgrid{gap:8px 14px;margin-bottom:10px}
+.editable-note{padding:8px 11px;margin-bottom:10px}
+
+/* 7. 임원 보고 문서 */
+.rpt .sub{margin-bottom:13px}
+.rpt h4{margin:14px 0 8px}
+.rpt .sumline{padding:4px 0}
+.rpt .concl{padding:11px 13px;margin-top:12px}
+
+/* 8. 빈 상태 블록 */
+.dt tbody tr td[colspan]:not(.l):not(.lbl),
+.rt tbody tr td[colspan]:not(.l):not(.lbl){padding:16px 12px}
+
+/* 9. 인라인 세로 여백 압축(마크업 무수정 · 단일값 속성만) */
+.wrap [style*="margin-bottom:32px"]{margin-bottom:16px!important}
+.wrap [style*="margin-bottom:28px"]{margin-bottom:15px!important}
+.wrap [style*="margin-bottom:24px"]{margin-bottom:14px!important}
+.wrap [style*="margin-bottom:22px"]{margin-bottom:14px!important}
+.wrap [style*="margin-bottom:20px"]{margin-bottom:13px!important}
+.wrap [style*="margin-bottom:18px"]{margin-bottom:12px!important}
+.wrap [style*="margin-bottom:16px"]{margin-bottom:11px!important}
+.wrap [style*="margin-top:32px"]{margin-top:16px!important}
+.wrap [style*="margin-top:28px"]{margin-top:15px!important}
+.wrap [style*="margin-top:24px"]{margin-top:14px!important}
+.wrap [style*="margin-top:20px"]{margin-top:13px!important}
+.wrap [style*="margin-top:18px"]{margin-top:12px!important}
+
+}
+/* 10. 모바일(≤768px) : 압축 완화 */
+@media screen and (max-width:768px){
+  .pagetitle{padding:14px 14px 2px}
+  .wrap{padding:12px 14px 26px}
+  .card{padding:14px;margin-bottom:12px}
+  .dt th,.dt td{padding:7px 8px}
+  .rt th,.rt td{padding:6px 8px}
+  .dt tbody tr td[colspan]:not(.l):not(.lbl),
+  .rt tbody tr td[colspan]:not(.l):not(.lbl){padding:20px 12px}
+}
+</style>
+<script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
+(function(){
+var MASTER='pmw0406@demo.local';var shown=false;
+function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
+var d=document.createElement('div');d.id='wtfpw';
+d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';
+d.innerHTML='<div style="background:#fff;border-radius:20px;padding:34px 30px;width:min(340px,92vw);box-shadow:0 25px 60px rgba(0,0,0,.4)"><div style="text-align:center;margin-bottom:16px"><div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:#fff;font-size:24px">\uD83D\uDD12</div><div style="font-size:19px;font-weight:800;color:#111827">\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD \uD544\uC694</div><div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.5">\uBCF4\uC548\uC744 \uC704\uD574 \uC784\uC2DC \uBE44\uBC00\uBC88\uD638\uB97C<br>\uBCF8\uC778\uB9CC \uC544\uB294 \uBE44\uBC00\uBC88\uD638\uB85C \uBCC0\uACBD\uD574\uC8FC\uC138\uC694.</div></div><input id="wtfpw-a" type="password" placeholder="\uC0C8 \uBE44\uBC00\uBC88\uD638 (6\uC790 \uC774\uC0C1)" style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px 12px;font-size:14px;color:#111827;margin-bottom:10px;box-sizing:border-box"><input id="wtfpw-b" type="password" placeholder="\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778" style="width:100%;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px 12px;font-size:14px;color:#111827;margin-bottom:12px;box-sizing:border-box"><div id="wtfpw-e" style="font-size:12px;color:#dc2626;margin-bottom:10px;display:none"></div><button id="wtfpw-btn" style="width:100%;background:#0d9488;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">\uBCC0\uACBD\uD558\uACE0 \uC2DC\uC791\uD558\uAE30</button><div style="text-align:center;margin-top:12px"><span id="wtfpw-out" style="font-size:12px;color:#9ca3af;cursor:pointer">\uB098\uC911\uC5D0 \uD558\uAE30 (\uB85C\uADF8\uC544\uC6C3)</span></div></div>';
+document.body.appendChild(d);
+d.querySelector('#wtfpw-btn').onclick=submit;
+d.querySelector('#wtfpw-out').onclick=function(){try{_sb.auth.signOut();}catch(e){}location.reload();};
+d.querySelector('#wtfpw-b').onkeydown=function(ev){if(ev.key===String.fromCharCode(69,110,116,101,114))submit();};
+return d;}
+async function submit(){var a=document.getElementById('wtfpw-a').value,b=document.getElementById('wtfpw-b').value,e=document.getElementById('wtfpw-e');e.style.display='none';
+if(a.length<6){e.textContent='\uBE44\uBC00\uBC88\uD638\uB294 6\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.';e.style.display='block';return;}
+if(a!==b){e.textContent='\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.';e.style.display='block';return;}
+var btn=document.getElementById('wtfpw-btn');btn.disabled=true;btn.textContent='\uBCC0\uACBD \uC911...';
+try{var r=await _sb.auth.updateUser({password:a});if(r.error){btn.disabled=false;btn.textContent='\uBCC0\uACBD\uD558\uACE0 \uC2DC\uC791\uD558\uAE30';e.textContent='\uC624\uB958: '+r.error.message;e.style.display='block';return;}
+var s=(await _sb.auth.getSession()).data.session;if(s)await _sb.from('crm_profiles').update({temp_pw:null}).eq('id',s.user.id);location.reload();
+}catch(ex){btn.disabled=false;btn.textContent='\uBCC0\uACBD\uD558\uACE0 \uC2DC\uC791\uD558\uAE30';e.textContent='\uC624\uB958: '+ex;e.style.display='block';}}
+async function chk(){if(shown)return;try{var s=(await _sb.auth.getSession()).data.session;if(!s||!s.user)return;if(s.user.email===MASTER)return;
+var r=await _sb.from('crm_profiles').select('temp_pw').eq('id',s.user.id).single();
+if(r.data&&r.data.temp_pw&&String(r.data.temp_pw).trim()){shown=true;ov().style.display='flex';setTimeout(function(){var i=document.getElementById('wtfpw-a');if(i)i.focus();},100);}}catch(e){}}
+function boot(){if(typeof _sb==='undefined'||!_sb||!_sb.auth){setTimeout(boot,300);return;}chk();try{_sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_IN')setTimeout(chk,300);});}catch(e){}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();</script>
+<script>/* WT_BFGUARD_V1 — bfcache 복원 시 세션·계정 재검증 (자동주입 스니펫, 개별 수정 금지) */
+(function(){
+var uid=null;
+function cap(){ if(typeof _sb==='undefined'||!_sb||!_sb.auth){ setTimeout(cap,300); return; } try{ _sb.auth.getSession().then(function(r){ if(r&&r.data&&r.data.session) uid=r.data.session.user.id; }).catch(function(){}); }catch(e){} }
+cap();
+window.addEventListener('pageshow', function(e){
+  if(!e.persisted) return;
+  try{ _sb.auth.getSession().then(function(r){ var s=r&&r.data&&r.data.session; if(!s || (uid && s.user && s.user.id!==uid)) location.reload(); }).catch(function(){ location.reload(); }); }catch(err){ location.reload(); }
+});
+})();</script>
+</head>
+<body>
+<div id="load"><i class="bi bi-arrow-repeat" style="margin-right:8px"></i>불러오는 중...</div>
+
+<div id="login"><div class="lc"><h1>💰 국내 미수금 관리</h1><div class="sub">국내영업 채권 현황</div>
+  <input id="li" type="email" placeholder="이메일" onkeydown="if(event.key==='Enter')doLogin()"><input id="lp" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">로그인</button><div id="login-err">이메일 또는 비밀번호가 올바르지 않습니다.</div></div></div>
+
+<div id="app">
+  <header class="hdr">
+    <div class="hdr-in">
+      <div class="brand"><div class="lg">💰</div><div><b>국내 미수금 관리</b><small id="hdr-asof">국내영업 채권 현황</small></div></div>
+      <div class="hdr-r">
+        <div class="sw-wrap"><button class="hbtn" onclick="ddToggle('swdd')"><i class="bi bi-grid-3x3-gap-fill"></i> 사이트 이동</button>
+          <div class="dd" id="swdd"></div></div>
+        <div class="sw-wrap"><button class="acctbtn" onclick="ddToggle('acctdd')"><span class="av" id="uav">-</span><span class="who"><span class="nm" id="unm">-</span><span class="em" id="uem">-</span></span></button>
+          <div class="dd" id="acctdd"><button onclick="changePw()"><i class="bi bi-key"></i> 비밀번호 변경</button><button onclick="doLogout()"><i class="bi bi-box-arrow-right"></i> 로그아웃</button></div></div>
+      </div>
+    </div>
+    <nav class="nav" id="topnav">
+      <a data-v="home"><span class="ico">📊</span><span class="lbl">대시보드</span></a>
+      <a data-v="list"><span class="ico">📋</span><span class="lbl">채권 목록</span></a>
+      <a data-v="mgmt"><span class="ico">🎯</span><span class="lbl">관리대상</span></a>
+      <a data-v="wo"><span class="ico">🧾</span><span class="lbl">손실처리</span></a>
+      <a data-v="trend"><span class="ico">📈</span><span class="lbl">주간 추이</span></a>
+      <a data-v="report"><span class="ico">🖨️</span><span class="lbl">임원 보고</span></a>
+      <a data-v="brief"><span class="ico">🎤</span><span class="lbl">발표용</span></a>
+      <a data-v="upload"><span class="ico">⬆️</span><span class="lbl">데이터 업로드</span></a>
+    </nav>
+  </header>
+  <main id="main">
+    <div class="pagetitle"><div><h2 id="pt-h">대시보드</h2><div class="desc" id="pt-d"></div></div><div class="actions" id="pt-a"></div></div>
+    <div class="wrap" id="view"></div>
+  </main>
+</div>
+
+<div class="modal" id="modal"><div class="mbox" id="mbox"></div></div>
+<div id="toast"></div>
+<button id="pdf-fab" class="noprint" onclick="window.print()"><i class="bi bi-filetype-pdf"></i> PDF 저장</button>
+
+<script>
+const SUPA_URL='https://bdkurlqmfsswgeiujyev.supabase.co';
+const SUPA_KEY='sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3';
+const CENTRAL='https://pmw0406-commits.github.io/novadx/';
+const _sb=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+let ME='', RAW=null, EDITS={}, E=[], M=[], curView='home';
+let _charts=[];
+
+// ── 유틸 ──
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escJs(s){return esc(String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fmt(v){return Math.round(v||0).toLocaleString();}
+function eok(v){return ((v||0)/1e8).toFixed(1)+'억';}
+function eok2(v){return ((v||0)/1e8).toFixed(2)+'억';}
+function pct(v,d){return (100*(v||0)).toFixed(d==null?1:d)+'%';}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2400);}
+function rid(s){let h=5381;for(let i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))>>>0;}return h.toString(16);}
+
+// 채권유형 메타(위험도 4단계 — 칩은 항상 라벨 동반, 색 단독 식별 없음)
+const TYPES={'정상채권':{c:'#2563eb',bg:'#dbeafe',d:'정상 수금 예정'},'지연채권':{c:'#b45309',bg:'#fef3c7',d:'수금 조치 필요'},'장기체납채권':{c:'#b91c1c',bg:'#fee2e2',d:'기 충당 완료'},'회수불가채권':{c:'#6d28d9',bg:'#ede9fe',d:'대손처리 완료'},'미분류':{c:'#64748b',bg:'#f1f5f9',d:'-'}};
+const TYPE_ORDER=['정상채권','지연채권','장기체납채권','회수불가채권','미분류'];
+function typeChip(t){const m=TYPES[t]||TYPES['미분류'];return `<span class="chip" style="background:${m.bg};color:${m.c}">${esc(t||'미분류')}</span>`;}
+const CLS_META={'집중관리':{c:'#b45309',bg:'#fef3c7'},'검토필요':{c:'#b91c1c',bg:'#fee2e2'},'관리제외':{c:'#64748b',bg:'#f1f5f9'}};
+function clsChip(c){const m=CLS_META[c]||{c:'#64748b',bg:'#f1f5f9'};return `<span class="chip" style="background:${m.bg};color:${m.c}">${esc(c||'-')}</span>`;}
+
+// ── 부트/로그인 ──
+async function arAllowed(user){const MASTER='pmw0406@demo.local';if((user.email||'')===MASTER)return true;
+  // 미수금(민감 재무데이터) = access 'ar' 권한자만. admin 자동통과 없음(마스터+지정자 전용).
+  try{const{data:p}=await _sb.from('crm_profiles').select('access').eq('id',user.id).maybeSingle();
+    if(!p)return false;
+    return (p.access||'').split(',').map(s=>s.trim()).indexOf('ar')>=0;
+  }catch(e){return false;}}
+async function boot(){let{data}=await _sb.auth.getSession();
+  if(!(data&&data.session)){await new Promise(r=>setTimeout(r,500));({data}=await _sb.auth.getSession());}
+  if(data&&data.session)await enter(data.session.user);
+  else{document.getElementById('load').style.display='none';document.getElementById('login').style.display='flex';}}
+async function doLogin(){const e=(document.getElementById('li').value||'').trim(),p=(document.getElementById('lp').value||'').trim();const er=document.getElementById('login-err');er.style.display='none';const{data,error}=await _sb.auth.signInWithPassword({email:e,password:p});if(error){er.style.display='block';return;}document.getElementById('login').style.display='none';await enter(data.user);}
+async function doLogout(){await _sb.auth.signOut();Object.keys(localStorage).filter(k=>k.startsWith('sb-')).forEach(k=>localStorage.removeItem(k));location.href=CENTRAL;}
+async function changePw(){const np=prompt('새 비밀번호 (6자 이상)');if(np===null)return;if((np||'').length<6){alert('6자 이상이어야 합니다.');return;}if(prompt('확인을 위해 다시 입력하세요')!==np){alert('일치하지 않습니다.');return;}const r=await _sb.auth.updateUser({password:np});if(r.error){alert('변경 실패: '+r.error.message);return;}alert('비밀번호가 변경되었습니다.');}
+/* 자동 로그아웃: 30분 무동작(마스터 제외) */
+(function(){var IDLE_MS=30*60*1000,_it;
+  function _logout(){try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
+  function _fire(){try{_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){_arm();return;}if(s)_logout();else _arm();}).catch(function(){_logout();});}catch(e){_logout();}}
+  function _arm(){clearTimeout(_it);_it=setTimeout(_fire,IDLE_MS);}
+  ['mousemove','mousedown','keydown','touchstart','scroll','click','wheel'].forEach(function(ev){document.addEventListener(ev,_arm,{passive:true,capture:true});});
+  _arm();})();
+function ddToggle(id){const el=document.getElementById(id);if(!el)return;const wasOpen=el.classList.contains('open');document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open'));if(!wasOpen)el.classList.add('open');}
+document.addEventListener('click',e=>{if(!e.target.closest('.sw-wrap'))document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open'));});
+
+/* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
+var _WT_MASTER='pmw0406@demo.local';
+var _WT_OWN=["ar"];
+var _WT_CENTRAL='https://pmw0406-commits.github.io/novadx/kor.html';
+var _wtReg=null, _wtItems=[];
+async function _wtLoadReg(){ if(_wtReg) return _wtReg; try{ var r=await _sb.from('site_registry').select('*').order('sort_order'); _wtReg=r.data||[]; }catch(e){ _wtReg=[]; } return _wtReg; }
+function _wtVis(s,ac,ad){ if(ac.indexOf(s.key)>=0) return true; if(s.admin_bypass&&ad) return true; if(s.extra_visible_rule){ try{ return !!((function(){return false;}))(ac,ad); }catch(e){ return false; } } return false; }
+async function _wtGo(i){
+  var s=_wtItems[i]; if(!s) return;
+  var u=(s.key==='korea'||s.url==='LOCAL')?_WT_CENTRAL:s.url;
+  var extra=s.key==='korea'?'&app=korea':(s.key==='admin'?'&app=admin':'');
+  var sess=null; try{ sess=(await _sb.auth.getSession()).data.session; }catch(e){}
+  if(sess && u.indexOf('#')<0) u+='#at='+encodeURIComponent(sess.access_token)+'&rt='+encodeURIComponent(sess.refresh_token);
+  u+=extra; location.href=u;
+}
+async function _wtRenderSwitcher(){
+  await _wtLoadReg();
+  var ac=[], ad=false;
+  try{ var ses=(await _sb.auth.getSession()).data.session;
+    if(ses&&ses.user){ if(ses.user.email===_WT_MASTER) ad=true;
+      var p=await _sb.from('crm_profiles').select('access,role').eq('id',ses.user.id).maybeSingle();
+      if(p&&p.data){ ac=(p.data.access||'').split(',').map(function(x){return x.trim();}).filter(Boolean); if(p.data.role==='admin') ad=true; }
+    }
+  }catch(e){}
+  var seen={};
+  _wtItems=_wtReg.filter(function(s){
+    if(_WT_OWN.indexOf(s.key)>=0) return false;
+    if(!_wtVis(s,ac,ad)) return false;
+    var dest=(s.key==='korea'||s.url==='LOCAL')?'central':s.url; if(seen[dest]) return false; seen[dest]=1;
+    return true;
+  }).sort(function(a,b){ return a.key==='total'?-1:(b.key==='total'?1:(a.sort_order-b.sort_order)); });
+  if(ad){ _wtItems.push({key:'admin',badge:'ADM',grad_from:'#6b7280',title:'관리자 페이지',url:_WT_CENTRAL}); }
+  var box=document.querySelector("#swdd"); if(!box) return;
+  box.innerHTML=_wtItems.map(function(s,i){
+    return '<div class="sw-item" onclick="_wtGo('+i+')"><span class="sw-badge" style="background:'+(s.grad_from||'#64748b')+'">'+esc(s.badge)+'</span><span style="flex:1">'+esc(s.title)+'</span><i class="bi bi-arrow-right" style="font-size:11px;opacity:.5"></i></div>';
+  }).join('');
+}
+
+async function enter(user){
+  ME=user.email||'';document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=(ME.split('@')[0]||'사용자');document.getElementById('uav').textContent=(ME[0]||'W').toUpperCase();
+  if(!(await arAllowed(user))){location.href=CENTRAL;return;}
+  await loadData();
+  afterLoad();
+}
+async function loadData(){
+  const[a,b]=await Promise.all([
+    _sb.from('cons_cache').select('data').eq('key','ar_kr').maybeSingle(),
+    _sb.from('cons_cache').select('data').eq('key','ar_kr_edits').maybeSingle()
+  ]);
+  RAW=(a.data&&a.data.data)||null;
+  EDITS=(b.data&&b.data.data)||{};
+  applyEdits();
+}
+function applyEdits(){
+  if(!RAW){E=[];M=[];return;}
+  E=(RAW.rows||[]).map(r=>{const e=EDITS[r.rid];if(!e)return r;
+    const c=Object.assign({},r);['mgr','plan','payNote','opinion','type','nextDate','nextAct'].forEach(k=>{if(e[k]!==undefined&&e[k]!=='')c[k]=e[k];});if(e.log&&e.log.length)c._log=e.log;c._edited=true;
+    if(e.mgr!==undefined&&e.mgr!==''&&r.mgr&&r.mgr!==e.mgr)c._mgrConflict=r.mgr;
+    return c;});
+  M=((RAW.mgmt&&RAW.mgmt.items)||[]).map(i=>{
+    const e=EDITS[i.rid];
+    const c=Object.assign({},i);
+    if(e){if(e.cls!==undefined&&e.cls!=='')c.cls=e.cls;if(e.mgmtOp!==undefined&&e.mgmtOp!=='')c.opinion=e.mgmtOp;if(e.cls||e.mgmtOp)c._edited=true;}
+    const er=i.rid?E.find(x=>x.rid===i.rid):null;
+    if(er){c.mgr=er.mgr;if(er.year)c.year=er.year;if(er.elapsed)c.elapsed=er.elapsed;c.memo=er.memo;}
+    return c;});
+  const h=document.getElementById('hdr-asof');if(h&&RAW.asOf)h.textContent='기준 '+RAW.asOf+' · '+(RAW.rows||[]).length+'건';
+}
+const VIEWS=['home','list','mgmt','wo','trend','report','brief','upload'];
+const RESTRICTED_USER='admin@demo.local';   // 임원보고·발표용·업로드는 임원/관리자(데모 admin)만 노출
+const RESTRICTED_VIEWS=['report','brief','upload'];
+function afterLoad(){
+  document.getElementById('load').style.display='none';document.getElementById('app').style.display='block';
+  const raw=(location.hash||'').replace(/^#/,'');const v=VIEWS.indexOf(raw)>=0?raw:'home';
+  if(raw!==v){try{history.replaceState(null,'','#'+v);}catch(e){}}
+  applyView(v);try{_wtRenderSwitcher();}catch(e){}
+  document.querySelectorAll('#topnav a').forEach(a=>{a.onclick=()=>setView(a.dataset.v);});
+  if(ME!==RESTRICTED_USER&&ME!==_WT_MASTER)RESTRICTED_VIEWS.forEach(rv=>{const t=document.querySelector('#topnav a[data-v="'+rv+'"]');if(t)t.style.display='none';});
+}
+function setView(v){if(('#'+v)===location.hash){applyView(v);}else{location.hash='#'+v;}}
+window.addEventListener('hashchange',()=>{const v=(location.hash||'').replace(/^#/,'');if(VIEWS.indexOf(v)>=0)applyView(v);});
+function applyView(v){if(RESTRICTED_VIEWS.indexOf(v)>=0&&ME!==RESTRICTED_USER&&ME!==_WT_MASTER){v='home';try{history.replaceState(null,'','#home');}catch(e){}}curView=v;closeModal();
+  document.querySelectorAll('#topnav a').forEach(a=>a.classList.toggle('active',a.dataset.v===v));
+  render();}
+
+// ── 집계 ──
+function typeAgg(rows){const m={};rows.forEach(r=>{const t=(r.type&&TYPE_ORDER.indexOf(r.type)>=0)?r.type:'미분류';m[t]=m[t]||{cnt:0,ar:0,prov:0,rows:[]};m[t].cnt++;m[t].ar+=r.ar;m[t].prov+=r.prov;m[t].rows.push(r);});return m;}
+function yearAgg(rows){const m={};rows.forEach(r=>{const y=r.year||'?';m[y]=m[y]||{cnt:0,amt:0,ar:0,prov:0};m[y].cnt++;m[y].amt+=r.amt;m[y].ar+=r.ar;m[y].prov+=r.prov;});return m;}
+function kpis(){
+  const tot=E.reduce((s,r)=>s+r.amt,0),coll=E.reduce((s,r)=>s+r.coll,0),bad=E.reduce((s,r)=>s+r.bad,0);
+  const arSum=E.reduce((s,r)=>s+r.ar,0),prov=E.reduce((s,r)=>s+r.prov,0);
+  const ta=typeAgg(E);
+  const delay=(ta['지연채권']||{ar:0,prov:0});const lt=(ta['장기체납채권']||{ar:0,prov:0});
+  const risk=delay.ar-delay.prov+(lt.ar-lt.prov); // 실질 관리필요 = 지연 잔여위험 + 장기체납 잔여위험
+  return{tot,coll,bad,arSum,prov,ta,risk,collRate:tot?coll/tot:0,collRateB:tot?(coll+bad)/tot:0};
+}
+function weeklyDelta(){const w=(RAW&&RAW.weekly)||[];if(w.length<2)return null;const a=w[w.length-1],b=w[w.length-2];return{d:a.d,pd:b.d,ar:a.ar-b.ar,cnt:a.cnt-b.cnt,coll:a.coll-b.coll};}
+function lastChange(){const c=(RAW&&RAW.changes)||[];return c.length?c[c.length-1]:null;}
+const AGING_B=[{k:'6개월 미만',max:183},{k:'6~12개월',max:366},{k:'1~3년',max:1096},{k:'3년 이상',max:1e15}];
+function agingIdx(r){if(!r.saleDate)return 3;const days=Math.floor((new Date(RAW.asOf)-new Date(r.saleDate))/864e5);return days<183?0:days<366?1:days<1096?2:3;}
+function agingBuckets(){const out=AGING_B.map(b=>({k:b.k,cnt:0,ar:0}));E.filter(r=>r.ar>0).forEach(r=>{const i=agingIdx(r);out[i].cnt++;out[i].ar+=r.ar;});return out;}
+function isNoMgr(r){return r.ar>0&&(!r.mgr||r.mgr==='(미배정)');}
+function isNoPlan(r){return r.ar>0&&!(r.plan||'').trim()&&r.type!=='정상채권';}
+function hasMgrConflict(r){return r.ar>0&&!!r._mgrConflict;}
+function isFollowDue(r){return r.ar>0&&!!r.nextDate&&r.nextDate<=today();}
+function hasFollow(r){return r.ar>0&&!!r.nextDate;}
+function mgrAgg(){const m={};E.filter(r=>r.ar>0).forEach(r=>{const g=r.mgr||'(미배정)';m[g]=m[g]||{cnt:0,ar:0,delay:0,noplan:0,oldest:''};m[g].cnt++;m[g].ar+=r.ar;
+  if(r.type==='지연채권'||r.type==='장기체납채권')m[g].delay++;
+  if(isNoPlan(r))m[g].noplan++;
+  if(!m[g].oldest||r.saleDate<m[g].oldest)m[g].oldest=r.saleDate;});
+  // 회수율: 잔액 유무와 무관하게 담당 전체 채권 기준(수금 완료분 포함)이라야 실적이 된다
+  E.forEach(r=>{const g=r.mgr||'(미배정)';if(!m[g])return;m[g].amt=(m[g].amt||0)+r.amt;m[g].collAmt=(m[g].collAmt||0)+r.coll;});
+  return Object.keys(m).map(k=>Object.assign({mgr:k,rate:m[k].amt>0?m[k].collAmt/m[k].amt:null},m[k])).sort((a,b)=>b.ar-a.ar);}
+
+// ── 렌더 ──
+function destroyCharts(){_charts.forEach(c=>{try{c.destroy();}catch(e){}});_charts=[];}
+function render(){
+  destroyCharts();
+  const v=document.getElementById('view');
+  const T={home:['대시보드','국내 미수채권 현황 한눈에'],list:['채권 목록','전체 채권 상세 · 행 클릭 → 상세/편집'],mgmt:['관리대상','잔액 보유 채권 분류 관리 (집중관리·검토필요·관리제외)'],wo:['손실처리(대손)','회수 실익 없는 채권 선별 → 검토 → 품의서 출력'],trend:['주간 추이','주간 스냅샷 기반 미수잔액 흐름'],report:['임원 보고','보고 형식 · 우측 하단 PDF 저장 버튼으로 출력'],brief:['발표용 요약','회의 발표용 핵심 요약 · 나만 보임'],upload:['데이터 업로드','재무팀 주간 엑셀 → 자동 파싱·갱신']};
+  document.getElementById('pt-h').textContent=T[curView][0];
+  document.getElementById('pt-d').textContent=T[curView][1]+(RAW&&RAW.asOf?' · 기준일 '+RAW.asOf:'');
+  document.getElementById('pt-a').innerHTML='';
+  if(!RAW){v.innerHTML='<div class="card">데이터가 없습니다 (cons_cache <b>ar_kr</b>). 데이터 업로드 탭에서 엑셀을 올려주세요.</div>';return;}
+  v.innerHTML=curView==='home'?viewHome():curView==='list'?viewList():curView==='mgmt'?viewMgmt():curView==='wo'?viewWo():curView==='trend'?viewTrend():curView==='report'?viewReport():curView==='brief'?viewBrief():viewUpload();
+  if(curView==='home')drawHomeCharts();
+  if(curView==='trend')drawTrendChart();
+}
+
+// ═══ 대시보드 ═══
+function viewHome(){
+  const k=kpis(),dl=weeklyDelta(),lc=lastChange();
+  const ta=k.ta;
+  const norm=ta['정상채권']||{cnt:0,ar:0,prov:0};
+  const delay=ta['지연채권']||{cnt:0,ar:0,prov:0};
+  const lt=ta['장기체납채권']||{cnt:0,ar:0,prov:0};
+  const ltCover=Math.min(lt.prov,lt.ar), ltRisk=Math.max(0,lt.ar-lt.prov);
+  const noMgr=E.filter(isNoMgr),noPlan=E.filter(isNoPlan),due=E.filter(isFollowDue),mgrConf=E.filter(hasMgrConflict);
+  const review=M.filter(i=>i.cls==='검토필요');
+  const normStale=E.filter(r=>r.type==='정상채권'&&r.ar>0&&agingIdx(r)>=1);
+  const woc=woCands();
+  const wSum=a=>a.reduce((s,x)=>s+x.r.ar,0);
+  const wocUn=woc.filter(x=>!woOf(x.r));
+  const wocCf=woc.filter(x=>{const w=woOf(x.r);return w&&w.st==='confirm';});
+  const wocSue=woc.filter(x=>{const w=woOf(x.r);return w&&(w.st==='sue'||w.st==='hold');});
+  const wocT1=woc.filter(x=>woTier(x.r).n===1),wocT2=woc.filter(x=>woTier(x.r).n===2);
+  let h='';
+  // ═ 히어로: 잔여 미수금 = 처리해야 할 돈 ═
+  h+=`<div class="hero">
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline">
+      <div><div class="hint" style="font-weight:700">잔여 미수금 (처리 대상)</div><div class="hv">${eok(k.arSum)}</div></div>
+      <div style="font-size:13px;font-weight:700;color:${dl&&dl.ar>0?'#C44E52':'#15803d'}">${dl?((dl.ar>=0?'전주 대비 +':'전주 대비 ')+eok2(dl.ar)):''}</div>
+      <div style="margin-left:auto;text-align:right"><div class="hint">이 중 내가 움직여야 하는 돈</div><div style="font-size:22px;font-weight:800;color:#C44E52">${eok2(delay.ar-delay.prov+ltRisk)}</div><div class="hint">지연 ${eok2(delay.ar)} + 장기체납 잔여 ${eok2(ltRisk)}</div></div>
+    </div>
+    <div class="sbar">
+      <div style="flex:${norm.ar};background:#4C72B0" title="정상채권 ${eok2(norm.ar)}" onclick="goListType('정상채권')"></div>
+      <div style="flex:${delay.ar};background:#DD8452" title="지연채권 ${eok2(delay.ar)}" onclick="goListType('지연채권')"></div>
+      <div style="flex:${ltCover};background:#8172B2" title="장기체납(충당 커버) ${eok2(ltCover)}" onclick="goListType('장기체납채권')"></div>
+      <div style="flex:${Math.max(ltRisk,k.arSum*0.004)};background:#C44E52" title="장기체납 잔여위험 ${eok2(ltRisk)}" onclick="goListType('장기체납채권')"></div>
+    </div>
+    <div class="sbar-leg">
+      <span class="li" onclick="goListType('정상채권')"><span class="sw" style="background:#4C72B0"></span>걷힐 돈(정상) <b>${eok2(norm.ar)}</b> · ${norm.cnt}건</span>
+      <span class="li" onclick="goListType('지연채권')"><span class="sw" style="background:#DD8452"></span>걷을 돈(지연) <b>${eok2(delay.ar)}</b> · ${delay.cnt}건</span>
+      <span class="li" onclick="goListType('장기체납채권')"><span class="sw" style="background:#8172B2"></span>정리할 돈(충당 커버) <b>${eok2(ltCover)}</b></span>
+      <span class="li" onclick="goListType('장기체납채권')"><span class="sw" style="background:#C44E52"></span>잔여 위험 <b>${eok2(ltRisk)}</b></span>
+    </div>
+    <div class="formula">산식: 총 채권 발생 <b>${eok(k.tot)}</b> − 수금 완료 <b>${eok(k.coll)}</b> − 대손처리(기확정) <b>${eok2(k.bad)}</b> = 잔여 미수금 <b>${eok(k.arSum)}</b></div>
+  </div>`;
+  // ═ 이번 주 변동 ═
+  if(lc){
+    const nColl=lc.coll.length+lc.red.length;
+    h+=`<div class="card" style="padding:14px 18px"><div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+      <b style="color:var(--ink);font-size:13.5px">📅 이번 주 변동 <span class="hint">(${lc.prev} → ${lc.d})</span></b>
+      <span class="delta-pill" style="background:#dcfce7;color:#15803d">💰 수금 ${nColl}건 · ${eok2(lc.sumColl)}</span>
+      <span class="delta-pill" style="background:#E4EBF3;color:#4C72B0">🆕 신규 미수 ${lc.new.length}건 · ${eok2(lc.sumNew)}</span>
+      ${lc.adj&&lc.adj.length?`<span class="delta-pill" style="background:#F5E6DA;color:#DD8452">⚠ 취소·조정 ${lc.adj.length}건 · ${eok2(lc.sumAdj)}</span>`:''}
+      <span class="delta-pill" style="background:${(dl&&dl.ar>0)?'#F3E1E2;color:#C44E52':'#dcfce7;color:#15803d'}">잔액 ${dl?(dl.ar>=0?'+':'')+eok2(dl.ar):'-'}</span>
+      <button class="btn" style="margin-left:auto" onclick="openChange(${(RAW.changes||[]).length-1})">내역 보기</button></div></div>`;
+  }
+  // ═ 처리 경로 3레인 ═
+  const row=(fn,label,val,zero)=>`<div class="ln-row" onclick="${fn}"><span>${label}</span><b class="${zero?'zero':''}">${val}</b></div>`;
+  h+='<div class="lanes">';
+  // A. 걷을 돈
+  h+=`<div class="lane" style="border-top-color:#DD8452">
+    <div class="ln-h"><span>💰 걷을 돈 — 수금 실행</span><span class="ln-amt" style="color:#DD8452">${eok2(delay.ar)}</span></div>
+    <div class="ln-sub">지연채권 ${delay.cnt}건 · Q3말 전액 수금 목표</div>
+    ${row("goListSpecial('follow')",'📌 팔로우업 도래(연락할 곳)',due.length?due.length+'건 · '+eok2(due.reduce((s,r)=>s+r.ar,0)):'0건',!due.length)}
+    ${row("goListSpecial('noPlan')",'📝 수금계획 미기재',noPlan.length?noPlan.length+'건 · '+eok2(noPlan.reduce((s,r)=>s+r.ar,0)):'0건',!noPlan.length)}
+    ${row("goListSpecial('noMgr')",'👤 담당 미배정',noMgr.length?noMgr.length+'건 · '+eok2(noMgr.reduce((s,r)=>s+r.ar,0)):'0건',!noMgr.length)}
+    ${row("_mf.cls='검토필요';setView('mgmt')",'🧭 검토필요 분류 확정',review.length?review.length+'건 · '+eok2(review.reduce((s,i)=>s+i.ar,0)):'0건',!review.length)}
+    ${mgrConf.length?row("goListSpecial('mgrConflict')",'🔀 담당자 값 충돌',mgrConf.length+'건',false):''}
+    ${row("goListType('지연채권')",'→ 지연채권 전체 목록','보기',false)}
+  </div>`;
+  // B. 정리할 돈
+  h+=`<div class="lane" style="border-top-color:#8172B2">
+    <div class="ln-h"><span>🧾 정리할 돈 — 손실처리</span><span class="ln-amt" style="color:#8172B2">${eok2(wSum(woc))}</span></div>
+    <div class="ln-sub">대손 후보 ${woc.length}건 · 확정분 손실영향 ${eok2(wocCf.reduce((s,x)=>s+Math.max(0,x.r.ar-x.r.prov),0))}</div>
+    ${row("setView('wo')",'⬜ 미검토',wocUn.length?wocUn.length+'건 · '+eok2(wSum(wocUn)):'0건 — 전건 검토됨',!wocUn.length)}
+    ${row("_woF=1;setView('wo')",'🔴 충당완료급(바로 처리 가능)',wocT1.length+'건 · '+eok2(wSum(wocT1)),!wocT1.length)}
+    ${row("_woF=2;setView('wo')",'🟠 회수의문급(개별 검토)',wocT2.length+'건 · '+eok2(wSum(wocT2)),!wocT2.length)}
+    ${row("setView('wo')",'✅ 대손 확정(품의 대기)',wocCf.length?wocCf.length+'건 · '+eok2(wSum(wocCf)):'0건',!wocCf.length)}
+    ${wocSue.length?row("setView('wo')",'⚖ 소송·보류',wocSue.length+'건 · '+eok2(wSum(wocSue)),false):''}
+    ${row("_woMode='doc';setView('wo')",'→ 품의서 생성','열기',false)}
+  </div>`;
+  // C. 걷힐 돈
+  h+=`<div class="lane" style="border-top-color:#4C72B0">
+    <div class="ln-h"><span>⏳ 걷힐 돈 — 정상 수금 감시</span><span class="ln-amt" style="color:#4C72B0">${eok2(norm.ar)}</span></div>
+    <div class="ln-sub">정상채권 ${norm.cnt}건 · 리스사·카드 수금 진행 — 정체만 감시</div>
+    ${lc?row('openChange('+((RAW.changes||[]).length-1)+')','💰 이번 주 수금',(lc.coll.length+lc.red.length)+'건 · '+eok2(lc.sumColl),false):''}
+    ${lc?row('openChange('+((RAW.changes||[]).length-1)+')','🆕 이번 주 신규 미수',lc.new.length+'건 · '+eok2(lc.sumNew),!lc.new.length):''}
+    ${row("goListSpecial('staleNormal')",'⚠ 6개월+ 정체(지연 전환 후보)',normStale.length?normStale.length+'건 · '+eok2(normStale.reduce((s,r)=>s+r.ar,0)):'0건',!normStale.length)}
+    ${row("goListType('정상채권')",'→ 정상채권 전체 목록','보기',false)}
+  </div>`;
+  h+='</div>';
+  // ═ 담당자별 + 연령 ═
+  const ma=mgrAgg(),ab=agingBuckets();
+  h+='<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr))">';
+  h+='<div class="card"><div class="sec">담당자별 미수 현황 <span class="hint">잔액 보유 기준 · 행 클릭 → 목록</span></div><div class="tbl-scroll" style="max-height:340px;overflow-y:auto"><table class="dt"><thead><tr><th class="l">담당자</th><th>건수</th><th>미수잔액</th><th>회수율</th><th>지연·체납</th><th>계획미기재</th></tr></thead><tbody>'
+    +ma.map(x=>`<tr class="clk" onclick="goListMgr('${escJs(x.mgr)}')"><td class="l"><b>${esc(x.mgr)}</b></td><td>${x.cnt}</td><td><b>${fmt(x.ar)}</b></td><td>${x.rate==null?'<span class="muted">-</span>':`<b style="color:${x.rate>=0.9?'#0f766e':x.rate>=0.75?'#334155':'#C44E52'}">${(x.rate*100).toFixed(1)}%</b>`}</td><td>${x.delay?`<span class="chip" style="background:#F5E6DA;color:#DD8452">${x.delay}건</span>`:'-'}</td><td>${x.noplan?`<span class="chip" style="background:#E4EBF3;color:#4C72B0">${x.noplan}건</span>`:'-'}</td></tr>`).join('')
+    +'</tbody></table></div></div>';
+  h+='<div class="card"><div class="sec">채권 연령(Aging) <span class="hint">매출일 기준 경과 · 클릭 → 목록</span></div>';
+  const abMax=Math.max(...ab.map(x=>x.ar),1);
+  h+=ab.map((x,i)=>`<div class="clk" style="cursor:pointer;padding:8px 2px;border-bottom:1px dashed var(--line)" onclick="goListAging(${i})">
+    <div style="display:flex;justify-content:space-between;font-size:12.5px"><b style="color:var(--ink)">${x.k}</b><span><b>${eok2(x.ar)}</b> <span class="hint">· ${x.cnt}건</span></span></div>
+    <div class="prog"><div style="width:${(100*x.ar/abMax).toFixed(1)}%;background:${i===0?'#4C72B0':i===1?'#8172B2':i===2?'#DD8452':'#C44E52'}"></div></div></div>`).join('');
+  h+='<div class="hint" style="margin-top:8px">1년 이상 구간은 회수 난도가 급격히 오릅니다 — 6~12개월 구간에서 조치하세요.</div></div>';
+  h+='</div>';
+  // ═ 추이 + 연도별 ═
+  h+='<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr))">';
+  h+='<div class="card"><div class="sec">주간 미수잔액 추이 <span class="hint">억원 · 클릭 → 주간 추이</span></div><canvas id="ch-trend" class="chart" onclick="setView(\'trend\')"></canvas></div>';
+  h+='<div class="card"><div class="sec">매출연도별 미수율 <span class="hint">미수채권 ÷ 원화금액</span></div><canvas id="ch-year" class="chart"></canvas></div>';
+  h+='</div>';
+  // ═ Top10 ═
+  const top=M.slice().sort((a,b)=>b.ar-a.ar).slice(0,10);
+  h+='<div class="card"><div class="sec">우선 관리대상 Top 10 <span class="hint">미수금액 기준 · 행 클릭 → 상세</span></div><div class="tbl-scroll"><table class="dt"><thead><tr><th>#</th><th class="l">거래처명</th><th>미수금액(원)</th><th class="l">분류</th><th class="l">담당자</th><th class="l">조치 상태</th></tr></thead><tbody>';
+  top.forEach((i,n)=>{
+    const r=E.find(x=>x.rid===i.rid);
+    const st=r?(woOf(r)?woChip(woOf(r).st):(r.nextDate?`<span class="chip" style="background:${r.nextDate<=today()?'#F3E1E2':'#dcfce7'};color:${r.nextDate<=today()?'#C44E52':'#15803d'}">조치일 ${r.nextDate}</span>`:`<span class="chip" style="background:#f8fafc;color:#94a3b8;border:1px dashed #cbd5e1">계획 없음</span>`)):'-';
+    h+=`<tr class="clk" onclick="openRow('${i.rid}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b></td><td><b>${fmt(i.ar)}</b></td><td class="l">${clsChip(i.cls)}</td><td class="l">${esc(i.mgr)}</td><td class="l">${st}</td></tr>`;});
+  h+='</tbody></table></div></div>';
+  // ═ 회계 요약 스트립 ═
+  h+=`<div class="accstrip">
+    <span class="as" onclick="goListAll()">총 채권 발생<b>${eok(k.tot)}</b> <span class="hint">${E.length}건</span></span>
+    <span class="as">수금 완료<b style="color:var(--ok)">${eok(k.coll)}</b> <span class="hint">수금률 ${pct(k.collRate)} · 대손포함 ${pct(k.collRateB)}</span></span>
+    <span class="as">대손처리(기확정)<b>${eok2(k.bad)}</b></span>
+    <span class="as" onclick="goListSpecial('hasProv')">대손충당금<b>${eok2(k.prov)}</b> <span class="hint">장기체납 기설정</span></span>
+    <span class="hint" style="margin-left:auto;align-self:center">상세 표는 임원 보고 탭 참조</span>
+  </div>`;
+  return h;
+}
+function goListType(t){_f={q:'',type:t,year:'',mgr:'',hasAr:(t==='정상채권'||t==='지연채권'||t==='장기체납채권'),sort:'ar',dir:-1,special:'',aging:'',group:false};setView('list');}
+function goListSpecial(s){_f={q:'',type:'',year:'',mgr:'',hasAr:true,sort:'ar',dir:-1,special:s,aging:'',group:false};setView('list');}
+function goListMgr(m){_f={q:'',type:'',year:'',mgr:m,hasAr:true,sort:'ar',dir:-1,special:'',aging:'',group:false};setView('list');}
+function goListAging(i){_f={q:'',type:'',year:'',mgr:'',hasAr:true,sort:'ar',dir:-1,special:'',aging:i,group:false};setView('list');}
+function goListAll(){_f={q:'',type:'',year:'',mgr:'',hasAr:false,sort:'ar',dir:-1,special:'',aging:'',group:false};setView('list');}
+function goListYear(y){_f={q:'',type:'',year:String(y),mgr:'',hasAr:false,sort:'ar',dir:-1,special:'',aging:'',group:false};setView('list');}
+function drawHomeCharts(){
+  const w=(RAW.weekly||[]);
+  const el1=document.getElementById('ch-trend');
+  if(el1&&w.length){_charts.push(new Chart(el1,_yFit({type:'line',data:{labels:w.map(x=>x.d.slice(5)),datasets:[{data:w.map(x=>+(x.ar/1e8).toFixed(2)),borderColor:'#4C72B0',backgroundColor:'rgba(76,114,176,.10)',borderWidth:2,pointRadius:2,pointHoverRadius:5,tension:.25,fill:true}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'미수잔액 '+c.parsed.y+'억'}}},scales:{y:{grid:{color:'#f1f3f5'},ticks:{callback:v=>v+'억'}},x:{grid:{display:false},ticks:{maxTicksLimit:10}}},maintainAspectRatio:false}})));}
+  const ya=yearAgg(E);const ys=Object.keys(ya).sort();
+  const el2=document.getElementById('ch-year');
+  if(el2){_charts.push(new Chart(el2,_yFit({type:'bar',data:{labels:ys,datasets:[{data:ys.map(y=>+(100*ya[y].ar/(ya[y].amt||1)).toFixed(1)),backgroundColor:'#4C72B0',borderRadius:4,maxBarThickness:44}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const y=ys[c.dataIndex],a=ya[y];return['미수율 '+c.parsed.y+'%','매출 '+eok(a.amt)+' · 미수 '+eok(a.ar)+' · '+a.cnt+'건'];}}}},scales:{y:{grid:{color:'#f1f3f5'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}},maintainAspectRatio:false}})));}
+}
+
+// ═══ 채권 목록 ═══
+let _f={q:'',type:'',year:'',mgr:'',hasAr:true,sort:'ar',dir:-1,special:'',aging:'',group:false};
+function listRows(){
+  let a=E.slice();
+  if(_f.hasAr)a=a.filter(r=>r.ar>0);
+  if(_f.type)a=a.filter(r=>(r.type||'미분류')===_f.type);
+  if(_f.year)a=a.filter(r=>String(r.year)===_f.year);
+  if(_f.mgr)a=a.filter(r=>r.mgr===_f.mgr);
+  if(_f.special==='noMgr')a=a.filter(isNoMgr);
+  if(_f.special==='noPlan')a=a.filter(isNoPlan);
+  if(_f.special==='follow')a=a.filter(isFollowDue);
+  if(_f.special==='hasProv')a=a.filter(r=>r.prov>0);
+  if(_f.special==='mgrConflict')a=a.filter(hasMgrConflict);
+  if(_f.special==='staleNormal')a=a.filter(r=>r.type==='정상채권'&&r.ar>0&&agingIdx(r)>=1);
+  if(_f.aging!==''&&_f.aging!=null)a=a.filter(r=>r.ar>0&&agingIdx(r)===_f.aging);
+  if(_f.q){const q=_f.q.toLowerCase();a=a.filter(r=>((r.name||'')+(r.memo||'')+(r.mgr||'')+(r.payNote||'')).toLowerCase().indexOf(q)>=0);}
+  const k=_f.sort,d=_f.dir;
+  a.sort((x,y)=>{const a1=x[k],b1=y[k];if(typeof a1==='number'||typeof b1==='number')return d*((a1||0)-(b1||0));return d*String(a1||'').localeCompare(String(b1||''));});
+  return a;
+}
+function setSort(k){if(_f.sort===k)_f.dir*=-1;else{_f.sort=k;_f.dir=-1;}render();}
+const SPECIAL_LBL={noMgr:'담당 미배정',noPlan:'수금계획 미기재',follow:'팔로우업 도래',hasProv:'대손충당금 설정됨',mgrConflict:'담당자 값 충돌',staleNormal:'정상채권 6개월+ 정체'};
+function viewList(){
+  const rows=listRows();
+  const years=[...new Set(E.map(r=>String(r.year)).filter(Boolean))].sort();
+  const mgrs=[...new Set(E.map(r=>r.mgr).filter(Boolean))].sort();
+  document.getElementById('pt-a').innerHTML='';
+  const arr=k=>_f.sort===k?(_f.dir<0?' ▼':' ▲'):'';
+  let h=`<div class="bar-row">
+    <div class="seg"><button class="${!_f.group?'on':''}" onclick="_f.group=false;render()">개별 채권</button><button class="${_f.group?'on':''}" onclick="_f.group=true;render()">거래처별</button></div>
+    <input class="inp" style="width:210px" placeholder="거래처·적요·담당자 검색" value="${esc(_f.q)}" oninput="_f.q=this.value;render()">
+    <select class="sel" onchange="_f.type=this.value;render()"><option value="">전체 유형</option>${TYPE_ORDER.map(t=>`<option ${_f.type===t?'selected':''}>${t}</option>`).join('')}</select>
+    <select class="sel" onchange="_f.year=this.value;render()"><option value="">전체 연도</option>${years.map(y=>`<option ${_f.year===y?'selected':''}>${y}</option>`).join('')}</select>
+    <select class="sel" onchange="_f.mgr=this.value;render()"><option value="">전체 담당</option>${mgrs.map(m=>`<option ${_f.mgr===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
+    <label style="font-size:12.5px;display:flex;align-items:center;gap:5px;font-weight:600"><input type="checkbox" ${_f.hasAr?'checked':''} onchange="_f.hasAr=this.checked;render()"> 잔액 있는 건만</label>
+    ${_f.special?`<button class="btn" onclick="_f.special='';render()">${SPECIAL_LBL[_f.special]||_f.special} ✕</button>`:''}
+    ${(_f.aging!==''&&_f.aging!=null)?`<button class="btn" onclick="_f.aging='';render()">연령 ${AGING_B[_f.aging].k} ✕</button>`:''}
+    <button class="btn" onclick="goListAll()"><i class="bi bi-arrow-counterclockwise"></i> 필터 초기화</button>
+    <span class="hint">${rows.length}건 · 미수 ${eok(rows.reduce((s,r)=>s+r.ar,0))}</span></div>`;
+  if(_f.group){
+    const g={};rows.forEach(r=>{const k=r.name;g[k]=g[k]||{name:k,cnt:0,amt:0,ar:0,types:{},mgrs:{},last:'',follow:''};const x=g[k];
+      x.cnt++;x.amt+=r.amt;x.ar+=r.ar;x.types[r.type||'미분류']=1;if(r.mgr)x.mgrs[r.mgr]=1;
+      if(r.saleDate>x.last)x.last=r.saleDate;if(r.nextDate&&(!x.follow||r.nextDate<x.follow))x.follow=r.nextDate;});
+    const arrG=Object.values(g).sort((a,b)=>b.ar-a.ar);
+    h+='<div class="card" style="padding:0;overflow:auto;max-height:72vh"><table class="dt"><thead><tr><th class="l">거래처</th><th>채권 건수</th><th>발생액 합계</th><th>미수잔액 합계</th><th class="l">유형</th><th class="l">담당</th><th class="l">최근 매출일</th><th class="l">다음 조치</th></tr></thead><tbody>';
+    h+=arrG.map(x=>`<tr class="clk" onclick="_f.group=false;_f.q='${escJs(x.name)}';render()">
+      <td class="l"><b>${esc(x.name)}</b></td><td>${x.cnt}</td><td>${fmt(x.amt)}</td><td><b style="color:${x.ar>0?'#b45309':'inherit'}">${fmt(x.ar)}</b></td>
+      <td class="l">${Object.keys(x.types).map(typeChip).join(' ')}</td><td class="l">${Object.keys(x.mgrs).map(esc).join(', ')||'-'}</td>
+      <td class="l">${esc(x.last)}</td><td class="l">${x.follow?`<span class="chip" style="background:${x.follow<=today()?'#fee2e2;color:#b91c1c':'#dcfce7;color:#15803d'}">${x.follow}</span>`:'-'}</td></tr>`).join('')
+      ||'<tr><td colspan="8" style="text-align:center;padding:26px;color:var(--muted)">조건에 맞는 거래처가 없습니다</td></tr>';
+    h+='</tbody></table></div>';
+    h+=`<div class="hint" style="margin-top:8px">${arrG.length}개 거래처 · 행 클릭 → 해당 거래처 개별 채권</div>`;
+    return h;
+  }
+  h+='<div class="card" style="padding:0;overflow:auto;max-height:72vh"><table class="dt"><thead><tr>'
+    +`<th class="l sortable" onclick="setSort('name')">거래처${arr('name')}</th><th class="l sortable" onclick="setSort('saleDate')">매출일${arr('saleDate')}</th><th class="l">적요</th><th class="sortable" onclick="setSort('amt')">원화금액${arr('amt')}</th><th class="sortable" onclick="setSort('coll')">수금${arr('coll')}</th><th class="sortable" onclick="setSort('ar')">미수채권${arr('ar')}</th><th>충당금</th><th class="l sortable" onclick="setSort('type')">유형${arr('type')}</th><th class="l sortable" onclick="setSort('mgr')">담당${arr('mgr')}</th><th class="l sortable" onclick="setSort('nextDate')">조치일${arr('nextDate')}</th><th class="l">수금계획</th></tr></thead><tbody>`;
+  h+=rows.slice(0,600).map(r=>`<tr class="clk" onclick="openRow('${r.rid}')">
+    <td class="l"><b>${esc(r.name)}</b>${r._edited?' <span class="chip" style="background:#ecfdf5;color:#047857">수정</span>':''}</td>
+    <td class="l">${esc(r.saleDate)}</td><td class="l memo" title="${esc(r.memo)}">${esc(r.memo)}</td>
+    <td>${fmt(r.amt)}</td><td>${fmt(r.coll)}</td><td><b style="color:${r.ar>0?'#b45309':'inherit'}">${fmt(r.ar)}</b></td><td>${fmt(r.prov)}</td>
+    <td class="l">${typeChip(r.type)}</td><td class="l">${esc(r.mgr)}</td>
+    <td class="l">${r.nextDate?`<span class="chip" style="background:${r.nextDate<=today()?'#fee2e2':'#dcfce7'};color:${r.nextDate<=today()?'#b91c1c':'#15803d'}">${r.nextDate}</span>`:'-'}</td>
+    <td class="l memo" title="${esc(r.plan)}">${esc(r.plan)}</td></tr>`).join('')
+    ||'<tr><td colspan="11" style="text-align:center;padding:26px;color:var(--muted)">조건에 맞는 채권이 없습니다</td></tr>';
+  h+='</tbody></table></div>';
+  if(rows.length>600)h+=`<div class="hint" style="margin-top:8px">상위 600건만 표시 (필터로 좁혀주세요)</div>`;
+  return h;
+}
+
+// ═══ 관리대상 ═══
+let _mf={cls:'',q:''};
+function viewMgmt(){
+  const sum=(RAW.mgmt&&RAW.mgmt.summary)||{};
+  const items=M.filter(i=>(!_mf.cls||i.cls===_mf.cls)&&(!_mf.q||((i.name||'')+(i.mgr||'')).toLowerCase().indexOf(_mf.q.toLowerCase())>=0)).sort((a,b)=>b.ar-a.ar);
+  let h='<div class="kpis" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px">';
+  [['집중관리','수금 실행 관리'],['검토필요','분류·조치 검토'],['관리제외','대손·매출취소 처리 예정']].forEach(([c,d])=>{const s=sum[c]||{cnt:M.filter(i=>i.cls===c).length,ar:M.filter(i=>i.cls===c).reduce((x,i)=>x+i.ar,0)};
+    h+=`<div class="kpi clk" style="flex:1 1 200px;min-width:0;${_mf.cls===c?'outline:2px solid '+(CLS_META[c].c):''}" onclick="_mf.cls=_mf.cls==='${c}'?'':'${c}';render()"><div class="l">${clsChip(c)} ${d}</div><div class="v">${s.cnt}건</div><div class="s">${eok2(s.ar)}</div></div>`;});
+  const tot=M.reduce((s,i)=>s+i.ar,0);
+  h+=`<div class="kpi" style="flex:1 1 200px;min-width:0"><div class="l">관리대상 합계 <span class="hint">(잔액 보유 채권)</span></div><div class="v">${M.length}건</div><div class="s">${eok2(tot)}</div></div></div>`;
+  h+=`<div class="bar-row"><input class="inp" style="width:230px" placeholder="거래처·담당자 검색" value="${esc(_mf.q)}" oninput="_mf.q=this.value;render()">${_mf.cls?`<button class="btn" onclick="_mf.cls='';render()">필터 해제: ${_mf.cls} ✕</button>`:''}<span class="hint">${items.length}건 표시 · 분류·의견은 행 클릭 후 수정</span></div>`;
+  h+='<div class="card" style="padding:0;overflow:auto;max-height:70vh"><table class="dt"><thead><tr><th>#</th><th class="l">거래처명</th><th class="l">적요</th><th class="l">발생</th><th class="l">경과</th><th>미수금액(원)</th><th class="l">담당자</th><th class="l">현재상태</th><th class="l">분류</th><th class="l">분류 근거</th><th class="l">관리 의견</th></tr></thead><tbody>';
+  h+=items.map((i,n)=>`<tr class="clk" onclick="openRow('${i.rid}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b>${i._edited?' <span class="chip" style="background:#ecfdf5;color:#047857">수정</span>':''}</td><td class="l memo" title="${esc(i.memo)}">${esc(i.memo)}</td><td class="l">${esc(i.year)}</td><td class="l hint">${esc(i.elapsed)}</td><td><b>${fmt(i.ar)}</b></td><td class="l">${esc(i.mgr)}</td><td class="l">${typeChip(i.state)}</td><td class="l">${clsChip(i.cls)}</td><td class="l memo" title="${esc(i.basis)}">${esc(i.basis)}</td><td class="l memo" title="${esc(i.opinion)}">${esc(i.opinion)}</td></tr>`).join('')
+    ||'<tr><td colspan="11" style="text-align:center;padding:26px;color:var(--muted)">해당 없음</td></tr>';
+  h+='</tbody></table></div>';
+  h+=`<div class="hint" style="margin-top:8px">분류 기준: 관리제외=대손·매출취소 처리 예정(실익 없음) · 집중관리=수금 실행 대상 · 검토필요=분류 판단 필요 · 담당자·경과는 항상 최신 데이터 반영, 분류·근거·의견은 관리대상 시트 작성 시점 기준(작성 ${(RAW.mgmt&&RAW.mgmt.asOf)||'-'} · 원본 기준일 ${(RAW.mgmt&&RAW.mgmt.base)||'-'})</div>`;
+  return h;
+}
+
+// ═══ 손실처리(대손) ═══
+const WO_ST={confirm:{l:'대손 확정(품의)',c:'#b91c1c',bg:'#fee2e2'},sue:{l:'소송 회수 추진',c:'#6d28d9',bg:'#ede9fe'},hold:{l:'보류(추심 지속)',c:'#b45309',bg:'#fef3c7'},skip:{l:'대상 제외',c:'#64748b',bg:'#f1f5f9'}};
+let _woMode='list', _woF='';
+function woOf(r){const e=EDITS[r.rid];return (e&&e.wo)||null;}
+function woReasons(r){
+  const mi=M.find(i=>i.rid===r.rid);const rs=[];
+  if(mi&&mi.cls==='관리제외')rs.push('관리대상: 관리제외');
+  if(/폐업/.test(r.name)||r.trait==='폐업')rs.push('거래처 폐업');
+  if(/회수불가/.test(r.dueNote||''))rs.push('지급기일: 회수불가');
+  if(/대손/.test(r.opinion||''))rs.push('실무의견: 대손');
+  if(r.ar>0&&r.prov>=r.ar*0.999)rs.push('충당금 100%');
+  if(/폐업/.test(r.mgr||''))rs.push('담당 대리점 폐업');
+  const yrs=r.saleDate?Math.floor((new Date(RAW.asOf)-new Date(r.saleDate))/(365.25*864e5)):0;
+  if(yrs>=5)rs.push(yrs+'년 경과');
+  else if(yrs>=3&&r.type==='장기체납채권')rs.push(yrs+'년 경과');
+  return rs;
+}
+// 우선순위 등급: "사건 발생여부 + 충당금 커버율" 2요소로 손실처리 후보를 2등급으로 분류.
+// (예전엔 "최근 상환활동"으로 별도 요주의급을 뒀으나, 관리대상 메모의 "최근입금 확인" 문구가
+// 실제로는 몇 년째 방치된 경우가 확인되어 폐지.)
+// ⚠재확인 배지는 충당완료급에만 붙인다 — 회수의문급은 등급 자체가 이미 "개별검토 필요"라
+// 배지가 중복이지만, 충당완료급은 원래 "안전하니 바로 처리"라는 뜻이라 입금기록이 있으면
+// 그 전제가 흔들리는 것이므로 별도로 짚어줄 가치가 있다.
+function woTier(r){
+  const mi=M.find(i=>i.rid===r.rid);
+  const txt=((mi&&mi.basis)||'')+' '+(r.plan||'')+' '+(r.payNote||'');
+  const hasPayKeyword=/분납|입금|완제/.test(txt);
+  const collAgeDays=r.collDate?(new Date((RAW&&RAW.asOf)||today())-new Date(r.collDate))/86400000:null;
+  const recentColl=collAgeDays!=null&&collAgeDays<=365;
+  const hasEvent=/폐업/.test(r.name)||r.trait==='폐업'||r.trait==='도주'||(mi&&mi.cls==='관리제외');
+  const fullProv=r.ar>0&&r.prov>=r.ar*0.999;
+  if(hasEvent&&fullProv){
+    let warn='';
+    if(hasPayKeyword){
+      warn=recentColl?`⚠ 최근 수금 있음(${r.collDate}) — 상환 진행 중일 수 있어 확정 전 재확인 권장`
+        :r.collDate?`⚠ 마지막 수금일(${r.collDate})이 1년 이상 지남 — 실제 상환여부 재확인 필요`
+        :'⚠ 입금기록 메모는 있으나 수금일 데이터 없음 — 재확인 필요';
+    }
+    return{n:1,l:'충당완료급',s:'최우선 처리',c:'#b91c1c',bg:'#fee2e2',warn};
+  }
+  return{n:2,l:'회수의문급',s:'개별검토 필요',c:'#b45309',bg:'#fef3c7',warn:''};
+}
+function woCands(){
+  return E.filter(r=>r.ar>0).map(r=>({r,rs:woReasons(r)})).filter(x=>{
+    if(woOf(x.r))return true;  // 상태 지정된 건은 항상 표시
+    const strong=x.rs.some(s=>/관리제외|폐업|회수불가|대손|충당금/.test(s));
+    return strong||(x.r.type==='장기체납채권'&&x.rs.length>0);
+  }).sort((a,b)=>(woTier(a.r).n-woTier(b.r).n)||(b.rs.length-a.rs.length)||(b.r.ar-a.r.ar));
+}
+async function woSet(ridv,st){
+  const e=Object.assign({},EDITS[ridv]||{});
+  if(!st)delete e.wo; else e.wo={st,_by:ME,_at:today()};
+  const keys=Object.keys(e).filter(k=>k[0]!=='_');
+  if(!keys.length)delete EDITS[ridv]; else EDITS[ridv]=e;
+  const res=await _sb.from('cons_cache').upsert({key:'ar_kr_edits',data:EDITS},{onConflict:'key'});
+  if(res.error){toast('저장 실패: '+res.error.message);return;}
+  applyEdits();render();toast(st?(WO_ST[st].l+' 지정'):'상태 해제');
+}
+function woChip(st){if(!st)return '<span class="chip" style="background:#f8fafc;color:#64748b;border:1px dashed #cbd5e1">미검토</span>';const m=WO_ST[st];return `<span class="chip" style="background:${m.bg};color:${m.c}">${m.l}</span>`;}
+function viewWo(){
+  const cands=woCands();
+  const cf=cands.filter(x=>{const w=woOf(x.r);return w&&w.st==='confirm';});
+  const sum=a=>a.reduce((s,x)=>s+x.r.ar,0);
+  const addLoss=a=>a.reduce((s,x)=>s+Math.max(0,x.r.ar-x.r.prov),0);
+  const byTier=n=>cands.filter(x=>woTier(x.r).n===n);
+  const t1=byTier(1),t2=byTier(2);
+  const undone=cands.filter(x=>!woOf(x.r));
+  document.getElementById('pt-a').innerHTML=' <button class="btn pri" onclick="_woMode=\'doc\';render()"><i class="bi bi-file-earmark-text"></i> 품의서 생성</button>';
+  if(_woMode==='doc')return viewWoDoc(cf);
+  let h='<div class="editable-note" style="background:#f0f9ff;border-color:#bae6fd;color:#075985">회의 후속: 회수 실익이 없는 채권을 선별해 <b>대손처리 품의 리스트</b>를 확정합니다. 근거는 원본 데이터(폐업·회수불가·충당금·관리분류)에서 자동 수집되며, 최종 판단(확정/소송/보류/제외)만 지정하면 품의서가 만들어집니다.<br>우선순위 등급(충당완료급/회수의문급)은 사건발생여부·충당금커버율로 매긴 참고값이며, 입금기록이 있는 건은 별도 ⚠ 재확인 배지로 표시됩니다.</div>';
+  h+='<div class="kpis" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px">';
+  h+=`<div class="kpi clk" style="flex:0 0 190px;min-width:0;${_woF===''?'outline:2px solid #64748b':''}" onclick="_woF='';render()"><div class="l">후보 전체</div><div class="v">${cands.length}건</div><div class="s">예상손실 ${eok2(addLoss(cands))} · 미검토 ${undone.length}건</div></div>`;
+  h+=`<div class="kpi clk" style="flex:0 0 190px;min-width:0;${_woF===1?'outline:2px solid #b91c1c':''}" onclick="_woF=1;render()"><div class="l">🔴 충당완료급</div><div class="v" style="color:#b91c1c">${t1.length}건</div><div class="s">미수잔액 ${eok2(sum(t1))} · 손실영향 ${eok2(addLoss(t1))}</div></div>`;
+  h+=`<div class="kpi clk" style="flex:0 0 190px;min-width:0;${_woF===2?'outline:2px solid #b45309':''}" onclick="_woF=2;render()"><div class="l">🟠 회수의문급</div><div class="v" style="color:#b45309">${t2.length}건</div><div class="s">미수잔액 ${eok2(sum(t2))} · 손실영향 ${eok2(addLoss(t2))}</div></div>`;
+  h+='</div>';
+  const rows=_woF===''?cands:cands.filter(x=>woTier(x.r).n===_woF);
+  const opts=st=>`<option value="">미검토</option>`+Object.keys(WO_ST).map(k=>`<option value="${k}" ${st===k?'selected':''}>${WO_ST[k].l}</option>`).join('');
+  h+='<div class="card" style="padding:0;overflow:auto;max-height:66vh"><table class="dt"><thead><tr><th>#</th><th class="l">거래처</th><th class="l">적요</th><th class="l">매출일</th><th>미수잔액</th><th>충당금</th><th>추가손실</th><th class="l">근거 (자동수집)</th><th class="l">담당</th><th class="l">상태</th></tr></thead><tbody>';
+  h+=rows.map((x,i)=>{const r=x.r,w=woOf(r),tier=woTier(r);return `<tr class="clk" onclick="openRow('${r.rid}')">
+    <td>${i+1}</td><td class="l"><b>${esc(r.name)}</b> <span class="chip" style="background:${tier.bg};color:${tier.c};font-size:10px" title="${esc(tier.s)}">${tier.l}</span>${tier.warn?` <span class="chip" style="background:#fee2e2;color:#b91c1c;font-size:10px" title="${esc(tier.warn)}">⚠ 재확인</span>`:''}</td><td class="l memo" title="${esc(r.memo)}">${esc(r.memo)}</td><td class="l">${esc(r.saleDate)}</td>
+    <td><b>${fmt(r.ar)}</b></td><td>${fmt(r.prov)}</td><td style="color:${r.ar-r.prov>1000?'#b91c1c':'inherit'};font-weight:700">${fmt(Math.max(0,r.ar-r.prov))}</td>
+    <td class="l" style="white-space:normal;min-width:220px">${x.rs.map(s=>`<span class="chip" style="background:#f1f5f9;color:#475569;margin:1px 2px 1px 0">${esc(s)}</span>`).join('')||'-'}</td>
+    <td class="l">${esc(r.mgr)}</td>
+    <td class="l" onclick="event.stopPropagation()"><select class="sel" style="padding:4px 6px;font-size:11.5px" onchange="woSet('${r.rid}',this.value)">${opts(w&&w.st)}</select>${w?`<div class="hint" style="margin-top:2px">${esc((w._by||'').split('@')[0])} ${esc(w._at||'')}</div>`:''}</td></tr>`;}).join('')
+    ||'<tr><td colspan="10" style="text-align:center;padding:26px;color:var(--muted)">해당 상태의 채권이 없습니다</td></tr>';
+  h+='</tbody></table></div>';
+  h+='<div class="hint" style="margin-top:8px">근거는 참고용 자동 수집입니다(소멸시효 등 법적 판단 아님). 확정 전 재무팀·법무팀의 대손 요건(폐업 증빙·시효 등) 확인이 필요합니다. 상태 변경은 즉시 저장되며 엑셀 재업로드에도 유지됩니다.</div>';
+  return h;
+}
+function viewWoDoc(cf){
+  const sum=cf.reduce((s,x)=>s+x.r.ar,0),prov=cf.reduce((s,x)=>s+x.r.prov,0),loss=cf.reduce((s,x)=>s+Math.max(0,x.r.ar-x.r.prov),0);
+  let h='<div class="bar-row noprint"><button class="btn" onclick="_woMode=\'list\';render()">← 목록으로</button><button class="btn pri" onclick="window.print()"><i class="bi bi-printer"></i> 인쇄 / PDF</button><span class="hint">확정(품의) 상태인 채권만 포함됩니다</span></div>';
+  h+='<div class="card rpt">';
+  h+='<h1>대손처리 품의(안)</h1><div class="sub">기안일 '+today()+' · 기안자 '+esc(ME.split('@')[0])+' · 채권 기준일 '+RAW.asOf+'</div>';
+  h+='<h4>1. 개요</h4><div class="sumline">국내 매출채권 중 거래처 폐업·연락두절 등으로 회수 실익이 없다고 판단되는 채권에 대해 아래와 같이 대손처리를 품의합니다. 대상 채권은 주간 미수금 관리 데이터에서 선별하였으며, 건별 근거를 첨부합니다.</div>';
+  h+=`<h4>2. 대상 채권 요약</h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl">구분</th><th>건수</th><th>금액(원)</th><th>금액(억원)</th></tr></thead><tbody>
+    <tr><td class="lbl">대손처리 대상 미수채권 잔액</td><td>${cf.length}</td><td>${fmt(sum)}</td><td>${(sum/1e8).toFixed(2)}</td></tr>
+    <tr><td class="lbl">└ 기설정 대손충당금 (상계)</td><td>-</td><td>${fmt(prov)}</td><td>${(prov/1e8).toFixed(2)}</td></tr>
+    <tr class="grand"><td class="lbl">추가 손실 인식액 (충당금 초과분)</td><td>-</td><td>${fmt(loss)}</td><td>${(loss/1e8).toFixed(2)}</td></tr></tbody></table></div>`;
+  h+='<div class="hint" style="margin:6px 0 0">충당금 기설정분은 대손 확정 시 충당금과 상계되어 추가 손익 영향이 없으며, 초과분만 당기 비용으로 인식됩니다.</div>';
+  h+='<h4>3. 대상 채권 명세</h4><div class="tbl-scroll"><table class="rt" style="font-size:11.5px"><thead><tr><th>No</th><th class="lbl">거래처명</th><th class="lbl">사업자번호</th><th class="lbl">매출일</th><th>미수잔액(원)</th><th>충당금(원)</th><th>추가손실(원)</th><th class="lbl">대손 사유</th></tr></thead><tbody>';
+  h+=cf.map((x,i)=>{const r=x.r;return `<tr><td>${i+1}</td><td class="lbl">${esc(r.name)}</td><td class="lbl">${esc(r.bizno)}</td><td class="lbl">${esc(r.saleDate)}</td><td>${fmt(r.ar)}</td><td>${fmt(r.prov)}</td><td>${fmt(Math.max(0,r.ar-r.prov))}</td><td class="lbl" style="white-space:normal">${x.rs.join(' · ')}</td></tr>`;}).join('')
+    ||'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">확정(품의) 상태로 지정된 채권이 없습니다 — 목록에서 상태를 지정하세요</td></tr>';
+  h+=`<tr class="grand"><td colspan="4" class="lbl">합계 ${cf.length}건</td><td>${fmt(sum)}</td><td>${fmt(prov)}</td><td>${fmt(loss)}</td><td></td></tr></tbody></table></div>`;
+  h+='<h4>4. 행정 사항</h4><div class="sumline">· 법인세법상 대손금 손금산입 요건(소멸시효 완성, 폐업 등 회수불능 사유) 및 증빙 구비 여부는 재무팀 확인 후 회계 반영</div><div class="sumline">· 소송 진행 건 및 법적 조치 필요 건은 법무팀 협의 후 별도 처리</div><div class="sumline">· 대손 확정 후에도 향후 회수 시 대손채권 회수이익으로 처리</div>';
+  h+=`<h4>5. 결재</h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl" style="width:25%">기안</th><th class="lbl" style="width:25%">검토</th><th class="lbl" style="width:25%">재무</th><th class="lbl" style="width:25%">승인</th></tr></thead><tbody><tr><td style="height:64px"></td><td></td><td></td><td></td></tr></tbody></table></div>`;
+  h+='</div>';
+  return h;
+}
+
+// ═══ 주간 추이 ═══
+function chAt(d){return (RAW.changes||[]).findIndex(c=>c.d===d);}
+function viewTrend(){
+  const w=(RAW.weekly||[]);
+  let h='<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr))">';
+  h+='<div class="card"><div class="sec">주간 미수잔액 추이 <span class="hint">억원 · '+w.length+'주</span></div><div style="height:280px"><canvas id="ch-trend2"></canvas></div></div>';
+  h+='<div class="card"><div class="sec">관리채권(지연+장기체납) 잔액 추이 <span class="hint">억원 · Q3말 지연채권 0 목표</span></div><div style="height:280px"><canvas id="ch-risk"></canvas></div></div>';
+  h+='</div>';
+  h+='<div class="card"><div class="sec">월별 수금 vs 신규 미수 발생 <span class="hint">억원 · 주간 변동 롤업 — 파랑(수금)이 주황(신규)보다 크면 잔액 감소 추세</span></div><div style="height:260px"><canvas id="ch-month"></canvas></div></div>';
+  h+='<div class="card" style="padding:0;overflow:auto"><table class="dt"><thead><tr><th class="l">주차(기준일)</th><th>채권건수</th><th>미수잔액</th><th>전주비</th><th>주간 수금</th><th>신규 미수</th><th>충당금</th>'+TYPE_ORDER.slice(0,4).map(t=>'<th class="l">'+t.replace('채권','')+'</th>').join('')+'<th></th></tr></thead><tbody>';
+  for(let i=w.length-1;i>=0;i--){const x=w[i],p=w[i-1];const d=p?x.ar-p.ar:null;
+    const ci=chAt(x.d);const c=ci>=0?RAW.changes[ci]:null;
+    h+=`<tr><td class="l"><b>${x.d}</b></td><td>${x.cnt}</td><td><b>${eok2(x.ar)}</b></td><td class="${d>0?'dn':d<0?'up':''}">${d==null?'-':(d>=0?'+':'')+eok2(d)}</td>
+      <td class="up">${c?(c.coll.length+c.red.length)+'건 '+eok2(c.sumColl):'-'}</td><td>${c?c.new.length+'건 '+eok2(c.sumNew):'-'}</td><td>${eok2(x.prov)}</td>`
+      +TYPE_ORDER.slice(0,4).map(t=>{const a=(x.types||{})[t];return `<td class="l hint">${a?a.cnt+'건 '+eok2(a.ar):'-'}</td>`;}).join('')
+      +`<td>${c?`<button class="btn" style="padding:3px 9px;font-size:11px" onclick="openChange(${ci})">내역</button>`:''}</td></tr>`;}
+  h+='</tbody></table></div>';
+  h+='<div class="hint">전주비: 빨강=미수 증가·초록=감소. 주간 수금/신규는 행 단위 스냅샷 비교로 산출(부분수금 포함). 새 엑셀 업로드 시 자동 누적.</div>';
+  return h;
+}
+function drawTrendChart(){
+  const w=(RAW.weekly||[]);
+  const el=document.getElementById('ch-trend2');
+  if(el&&w.length)_charts.push(new Chart(el,_yFit({type:'line',data:{labels:w.map(x=>x.d.slice(5)),datasets:[{data:w.map(x=>+(x.ar/1e8).toFixed(2)),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',borderWidth:2,pointRadius:3,pointHoverRadius:6,tension:.25,fill:true}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const x=w[c.dataIndex];return['미수잔액 '+c.parsed.y+'억 ('+x.cnt+'건)','수금누계 '+eok(x.coll)];}}}},scales:{y:{grid:{color:'#f1f3f5'},ticks:{callback:v=>v+'억'}},x:{grid:{display:false}}},maintainAspectRatio:false}})));
+  const el2=document.getElementById('ch-risk');
+  const risk=w.map(x=>{const t=x.types||{};return +(((t['지연채권']||{ar:0}).ar+(t['장기체납채권']||{ar:0}).ar)/1e8).toFixed(2);});
+  if(el2&&w.length)_charts.push(new Chart(el2,_yFit({type:'line',data:{labels:w.map(x=>x.d.slice(5)),datasets:[{data:risk,borderColor:'#b45309',backgroundColor:'rgba(180,83,9,.08)',borderWidth:2,pointRadius:3,pointHoverRadius:6,tension:.25,fill:true}]},
+    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const t=w[c.dataIndex].types||{};const dl=t['지연채권']||{cnt:0,ar:0},lt=t['장기체납채권']||{cnt:0,ar:0};return['관리채권 '+c.parsed.y+'억','지연 '+dl.cnt+'건 '+eok2(dl.ar)+' · 장기체납 '+lt.cnt+'건 '+eok2(lt.ar)];}}}},scales:{y:{grid:{color:'#f1f3f5'},ticks:{callback:v=>v+'억'}},x:{grid:{display:false}}},maintainAspectRatio:false}})));
+  // 월별 수금 vs 신규(변동이력 롤업) — 동일 단위 한 축, 2시리즈 범례
+  const el3=document.getElementById('ch-month');
+  const mm={};(RAW.changes||[]).forEach(c=>{const m=c.d.slice(0,7);mm[m]=mm[m]||{coll:0,neu:0};mm[m].coll+=c.sumColl;mm[m].neu+=c.sumNew;});
+  const ms=Object.keys(mm).sort();
+  if(el3&&ms.length)_charts.push(new Chart(el3,_yFit({type:'bar',data:{labels:ms,datasets:[
+      {label:'수금',data:ms.map(m=>+(mm[m].coll/1e8).toFixed(2)),backgroundColor:'#2563eb',borderRadius:4,maxBarThickness:36},
+      {label:'신규 미수',data:ms.map(m=>+(mm[m].neu/1e8).toFixed(2)),backgroundColor:'#b45309',borderRadius:4,maxBarThickness:36}]},
+    options:{plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+' '+c.parsed.y+'억'}}},scales:{y:{grid:{color:'#f1f3f5'},ticks:{callback:v=>v+'억'}},x:{grid:{display:false}}},maintainAspectRatio:false}})));
+}
+// ── 주간 변동 상세 모달 ──
+function openChange(i){
+  const c=(RAW.changes||[])[i];if(!c)return;
+  const sect=(title,arr,color,extra)=>{if(!arr||!arr.length)return '';
+    return `<div class="sec" style="margin-top:14px">${title} <span class="hint">${arr.length}건 · ${eok2(arr.reduce((s,x)=>s+x.v,0))}</span></div>
+    <table class="dt"><thead><tr><th class="l">거래처</th><th class="l">적요</th><th>${extra||'금액(원)'}</th><th class="l">담당</th><th class="l">유형</th></tr></thead><tbody>`
+    +arr.slice().sort((a,b)=>b.v-a.v).map(x=>`<tr><td class="l"><b>${esc(x.n)}</b></td><td class="l memo" title="${esc(x.m)}">${esc(x.m)}</td><td style="color:${color};font-weight:700">${fmt(x.v)}${x.d0!=null?`<div class="hint">잔여 ${fmt(x.d0)}</div>`:''}</td><td class="l">${esc(x.g)}</td><td class="l">${typeChip(x.t)}</td></tr>`).join('')+'</tbody></table>';};
+  let h=`<div class="mhd"><div><h3>주간 변동 내역</h3><div class="hint">${c.prev} → ${c.d} · 수금 ${eok2(c.sumColl)} · 신규 ${eok2(c.sumNew)}${c.adj&&c.adj.length?' · 취소·조정 '+eok2(c.sumAdj):''}</div></div><button class="x" onclick="closeModal()">✕</button></div><div class="mbody">`;
+  h+=sect('💰 전액 수금',c.coll,'#15803d');
+  h+=sect('💧 부분 수금',c.red,'#0891b2','수금액(원)');
+  h+=sect('🆕 신규 미수 발생',c.new,'#1d4ed8');
+  h+=sect('⚠ 취소·조정(원장 제외)',c.adj,'#b45309');
+  h+='</div>';
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('modal').classList.add('open');
+}
+
+// ═══ 임원 보고 ═══
+function viewReport(){
+  const k=kpis();const ya=yearAgg(E);const ys=Object.keys(ya).sort();
+  const delay=(k.ta['지연채권']||{cnt:0,ar:0,prov:0}),lt=(k.ta['장기체납채권']||{cnt:0,ar:0,prov:0});
+  const ltRisk=lt.ar-lt.prov;
+  const dl=weeklyDelta(),lc=lastChange();
+  let h='<div class="card rpt">';
+  h+=`<h1>국내영업 미수금 세부현황 보고</h1><div class="sub">${RAW.asOf} 기준 · 총 ${E.length}건 채권 데이터</div>`;
+  if(dl&&lc)h+=`<div style="text-align:center;margin:-10px 0 18px;font-size:12.5px;color:var(--body)">전주(${dl.pd}) 대비 미수 <b class="${dl.ar>0?'dn':'up'}">${dl.ar>=0?'+':''}${eok2(dl.ar)}</b> · 주간 수금 <b class="up">${lc.coll.length+lc.red.length}건 ${eok2(lc.sumColl)}</b> · 신규 미수 ${lc.new.length}건 ${eok2(lc.sumNew)}</div>`;
+  h+='<div class="rpt-grid"><div>';
+  h+='<h4>핵심 요약</h4>';
+  h+=`<div class="sumline">❶ 수금률 <b>${pct(k.collRate)}</b> — 총 매출채권 ${eok(k.tot)}원 중 ${eok(k.coll)}원 수금 완료 (대손처리 ${eok2(k.bad)}원 포함 시 ${pct(k.collRateB)})</div>`;
+  const norm=(k.ta['정상채권']||{ar:0});
+  h+=`<div class="sumline">❷ 잔여 미수금 ${eok(k.arSum)}원 중 ${eok(norm.ar)}원(${pct(k.arSum?norm.ar/k.arSum:0)})은 2025~2026년 당해 매출로 리스사·카드 결제 등 정상 수금 진행 중</div>`;
+  h+=`<div class="sumline">❸ 실질 관리 필요 채권 <b>${eok2(k.risk)}원</b> — 지연채권 ${eok2(delay.ar)}원(Q3 전액 수금 목표) + 장기체납 잔여 위험 ${eok2(ltRisk)}원(충당금 ${pct(lt.ar?lt.prov/lt.ar:0)} 기설정)</div>`;
+  h+=`<div class="sumline">❹ 장기체납채권 ${eok2(lt.ar)}원에 대해 대손충당금 ${eok2(lt.prov)}원 기설정 완료 — 추가 손실 위험액 ${eok2(ltRisk)}원 수준으로 제한적</div>`;
+  h+='<h4>수금 현황 총괄 <span class="hint noprint">행 클릭 → 해당 채권 목록</span></h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl">구분</th><th>금액(원)</th><th>금액(억원)</th><th>비율</th><th class="lbl">비고</th></tr></thead><tbody>';
+  h+=`<tr class="hl" onclick="goListAll()"><td class="lbl">연간 총 채권 발생액 (A)</td><td>${fmt(k.tot)}</td><td>${(k.tot/1e8).toFixed(1)}</td><td>100%</td><td class="lbl">${E.length}건 · 2020~2026년</td></tr>`;
+  h+=`<tr><td class="lbl">└ 수금 완료 (B)</td><td>${fmt(k.coll)}</td><td>${(k.coll/1e8).toFixed(1)}</td><td>${pct(k.collRate)}</td><td class="lbl">정상 수금 완료분</td></tr>`;
+  h+=`<tr class="hl" onclick="goListType('회수불가채권')"><td class="lbl">└ 대손처리 (C)</td><td>${fmt(k.bad)}</td><td>${(k.bad/1e8).toFixed(1)}</td><td>${pct(k.tot?k.bad/k.tot:0)}</td><td class="lbl">폐업 거래처 등 기처리 완료</td></tr>`;
+  h+=`<tr class="grand hl" onclick="setView('list')"><td class="lbl">잔여 미수금 (A−B−C)</td><td>${fmt(k.arSum)}</td><td>${(k.arSum/1e8).toFixed(1)}</td><td>${pct(k.tot?k.arSum/k.tot:0)}</td><td class="lbl"></td></tr>`;
+  h+=`<tr class="hl" onclick="goListSpecial('hasProv')"><td class="lbl">└ 대손충당금 설정액</td><td>${fmt(k.prov)}</td><td>${(k.prov/1e8).toFixed(1)}</td><td>-</td><td class="lbl">장기체납채권 대상 기설정</td></tr>`;
+  h+=`<tr class="hl" onclick="setView('mgmt')"><td class="lbl">└ 실질 회수 위험액</td><td>${fmt(k.arSum-k.prov)}</td><td>${((k.arSum-k.prov)/1e8).toFixed(1)}</td><td>${pct(k.tot?(k.arSum-k.prov)/k.tot:0)}</td><td class="lbl">대손충당 제외 미수금</td></tr>`;
+  h+='</tbody></table></div>';
+  h+='</div><div>';
+  h+='<h4>잔여 미수금 성격별 분류 <span class="hint noprint">행 클릭 → 해당 채권 목록</span></h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl">채권 분류</th><th>건수</th><th>미수채권금액</th><th>대손충당금</th><th>실질 위험액</th></tr></thead><tbody>';
+  TYPE_ORDER.forEach(t=>{const a=k.ta[t];if(!a)return;h+=`<tr class="hl" onclick="goListType('${t}')"><td class="lbl">${typeChip(t)} ${TYPES[t].d}</td><td>${a.cnt}</td><td>${fmt(a.ar)}</td><td>${fmt(a.prov)}</td><td>${fmt(a.ar-a.prov)}</td></tr>`;});
+  h+=`<tr class="grand"><td class="lbl">합계</td><td>${E.length}</td><td>${fmt(k.arSum)}</td><td>${fmt(k.prov)}</td><td>${fmt(k.arSum-k.prov)}</td></tr></tbody></table></div>`;
+  h+='<h4>매출연도별 현황 <span class="hint noprint">행 클릭 → 해당 채권 목록</span></h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl">매출연도</th><th>건수</th><th>원화금액(원)</th><th>미수채권(원)</th><th>미수율</th><th>대손충당금(원)</th></tr></thead><tbody>';
+  ys.forEach(y=>{const a=ya[y];h+=`<tr class="hl" onclick="goListYear('${y}')"><td class="lbl">${y}년</td><td>${a.cnt}</td><td>${fmt(a.amt)}</td><td>${fmt(a.ar)}</td><td>${pct(a.amt?a.ar/a.amt:0)}</td><td>${fmt(a.prov)}</td></tr>`;});
+  h+=`<tr class="grand"><td class="lbl">합계</td><td>${E.length}</td><td>${fmt(k.tot)}</td><td>${fmt(k.arSum)}</td><td>${pct(k.tot?k.arSum/k.tot:0)}</td><td>${fmt(k.prov)}</td></tr></tbody></table></div>`;
+  h+='</div></div>';
+  h+='<h4>관리 채권 조치 계획 <span class="hint noprint">행 클릭 → 해당 채권 목록</span></h4><div class="tbl-scroll"><table class="rt"><thead><tr><th class="lbl">구분</th><th>대상</th><th class="lbl">현황 및 원인</th><th class="lbl">조치 내용</th><th class="lbl">목표 기한</th><th class="lbl">담당</th></tr></thead><tbody>';
+  h+=`<tr class="hl" onclick="goListType('지연채권')"><td class="lbl">${typeChip('지연채권')} (${eok2(delay.ar)}원)</td><td>${delay.cnt}건</td><td class="lbl" style="white-space:normal">2023~2025년 매출, 할부·팩토링 지연 및 분납 약정 미이행</td><td class="lbl" style="white-space:normal">담당자 직접 접촉 → 분납 약정 재설정 또는 일괄 수금 협의</td><td class="lbl">2026년 9월말 (Q3)</td><td class="lbl">국내영업팀 담당자별</td></tr>`;
+  h+=`<tr class="hl" onclick="goListType('장기체납채권')"><td class="lbl">${typeChip('장기체납채권')} (${eok2(lt.ar)}원)</td><td>${lt.cnt}건</td><td class="lbl" style="white-space:normal">2020~2022년 매출, 대부분 폐업·연락불가 → ${eok2(lt.prov)}원 충당금 기설정</td><td class="lbl" style="white-space:normal">잔여 ${eok2(ltRisk)}원 소송 회수 또는 대손처리 확정 (법무팀 협의)</td><td class="lbl">2026년 12월말</td><td class="lbl">국내영업팀 + 재무팀</td></tr>`;
+  h+='</tbody></table></div>';
+  // 지연채권 수금 진행(주간)
+  const w=(RAW.weekly||[]);
+  const dlSeries=w.map(x=>((x.types||{})['지연채권']||{ar:null}).ar).filter(v=>v!=null);
+  if(dlSeries.length>=2){
+    const peak=Math.max(...dlSeries),cur=dlSeries[dlSeries.length-1];
+    const done=peak>0?Math.max(0,(peak-cur)/peak):0;
+    h+='<h4>지연채권 수금 진행 (2026 Q3말 전액 수금 목표)</h4>';
+    h+=`<div style="font-size:13px;margin-bottom:6px">연중 최고 ${eok2(peak)} → 현재 <b>${eok2(cur)}</b> (${pct(done)} 감축) · 목표 기한 <b>2026-09-30</b></div>`;
+    h+=`<div class="prog" style="height:14px"><div style="width:${(100*done).toFixed(1)}%;background:${done>=.5?'#15803d':'#b45309'}"></div></div>`;
+    h+=`<div class="hint">잔여 ${eok2(cur)} — 담당자별 분납 재약정·일괄수금 협의 중, 월별 점검</div>`;
+  }
+  h+=`<div class="concl">➤ 총 미수금 ${eok(k.arSum)}원 중 실질 회수 위험액은 ${eok2(k.risk)}원(${pct(k.arSum?k.risk/k.arSum:0)})이며, 이 중 장기체납 잔여 ${eok2(ltRisk)}원은 충당금 기설정으로 추가 손실 위험 최소화</div>`;
+  // 예상 질문 & 답변(Q&A)
+  h+='<h4>예상 질문 & 답변 대비</h4>';
+  h+='<div class="qa-grid">'+buildQA(k,delay,lt).map(([q,a])=>`<details class="qa" open><summary>${q}</summary><div class="a">${a}</div></details>`).join('')+'</div>';
+  h+='</div>';
+  return h;
+}
+// 임원보고·발표용 공용 예상질문 데이터
+function buildQA(k,delay,lt){
+  const ya2=yearAgg(E);const y26=ya2['2026']||{amt:0,ar:0};
+  return [
+    ['실질 위험액이 '+((k.arSum-k.prov)/1e8).toFixed(1)+'억이라는 표와 '+eok2(k.risk)+'이라는 표가 다른데, 어느 게 맞습니까?',
+     '두 수치 모두 맞습니다. '+((k.arSum-k.prov)/1e8).toFixed(1)+'억원은 잔여 미수금에서 대손충당금만 뺀 단순 계산값으로 정상 수금 진행 중인 채권까지 포함합니다. '+eok2(k.risk)+'원은 정상채권을 제외하고 실제 관리가 필요한 지연채권+장기체납 잔여위험만 합산한 수치로, 경영 관점의 실질 위험액입니다.'],
+    ['지연채권 '+eok2(delay.ar)+'원, 9월까지 정말 다 걷을 수 있습니까?',
+     '담당자별로 분납 약정 재설정 또는 일괄 수금을 협의 중이며, 이 시스템으로 주별 진행 상황을 점검합니다. 진행이 지연될 경우 조기에 별도 보고드리겠습니다.'],
+    ['장기체납채권은 왜 아직 대손처리하지 않았습니까?',
+     '폐업·연락 불가 거래처가 대부분으로 법적 절차(소송 회수 또는 대손 확정)가 필요해 법무팀과 협의 중입니다. 이미 '+pct(lt.ar?lt.prov/lt.ar:0)+'는 충당금으로 설정해 재무적 영향은 제한적입니다.'],
+    ['2026년 미수율('+pct(y26.amt?y26.ar/y26.amt:0)+')이 다른 해보다 높아 보이는데 문제 없습니까?',
+     '2026년은 당해 매출이라 아직 결제 주기가 남아있는 리스·카드 결제 건이 많기 때문입니다. 실제 부실이 아니라 정상적인 수금 사이클상의 미수율입니다.'],
+    (function(){const wc=woCands();const t1=wc.filter(x=>woTier(x.r).n===1).length,t2=wc.filter(x=>woTier(x.r).n===2).length,warned=wc.filter(x=>woTier(x.r).warn).length;
+      return ['손실처리 후보 '+wc.length+'건 중 충당완료급/회수의문급은 어떻게 나눈 겁니까?',
+        '사건 발생 여부(폐업·관리제외)와 충당금 커버율 2가지 데이터 기준으로 자동 분류했습니다. 충당완료급 '+t1+'건은 충당금이 이미 100% 설정돼 확정해도 추가 손실이 없는 건이고, 회수의문급 '+t2+'건은 충당금이 덜 쌓여 있어 확정 시 실제 손실이 발생하니 개별 확인이 필요한 건입니다(이쪽은 등급 자체가 이미 검토 대상이라 별도 배지는 안 붙입니다). 충당완료급 중 '+warned+'건은 "안전하다"고 판단했음에도 입금·분납 기록이 있어 ⚠ 재확인 배지를 붙였는데, 실제 수금일을 확인해보니 1년 넘게 지난 옛 기록이라 등급은 그대로 두고 배지로만 주의를 줍니다.'];})(),
+    ['대시보드의 채권 연령(Aging) "3년 이상" 건수와 손실처리 후보 건수가 같아 보이는데 같은 건입니까?',
+     '아닙니다. 채권 연령은 단순히 매출일 기준 경과기간만으로 나눈 것이고, 손실처리 후보는 폐업·회수불가·충당금 설정 등 여러 조건을 함께 만족해야 들어갑니다. 우연히 건수가 비슷하게 나올 수는 있지만 서로 다른 기준의 별개 집계입니다.'],
+    (function(){var arCnt=E.filter(function(r){return r.ar>0;}).length,wcN=woCands().length;
+      return ['왜 '+wcN+'건이 전부입니까, 더 있는 거 아닙니까?',
+       '잔액이 남아있는 채권 '+arCnt+'건 전체를 다시 확인했고, 그중 폐업·장기체납·회수불가 신호가 있는 건이 이 '+wcN+'건이었습니다. 나머지 '+(arCnt-wcN)+'건은 정상채권이거나 실제로 정상 수금·분납이 진행 중인 지연채권이라 후보에서 제외했습니다.'];})(),
+    (function(){var z=woCands().filter(function(x){return woTier(x.r).n===2&&(Number(x.r.prov)||0)===0;}).sort(function(a,b){return b.r.ar-a.r.ar;})[0];
+      if(!z) return ['회수의문급 중 충당금 미설정 건은 어떻게 처리합니까?','충당금이 아직 설정되지 않은 회수의문급 건은 확정 시 잔액이 그대로 새 손실로 잡히므로, 개별적으로 재무팀 확인 후 진행합니다.'];
+      return ['회수의문급 '+z.r.name+'은(는) 왜 충당금이 0원입니까?',
+       '비교적 최근에 폐업 처리된 건이라 아직 충당금을 쌓을 시간이 없었던 것으로 보입니다. 확정 시 '+eok2(z.r.ar)+'이 그대로 새 손실로 잡히는 건이라 재무팀 확인이 필요합니다.'];})()
+  ];
+}
+
+// ═══ 발표용 요약(비공개) ═══
+function viewBrief(){
+  const k=kpis();
+  const delay=(k.ta['지연채권']||{cnt:0,ar:0,prov:0}),lt=(k.ta['장기체납채권']||{cnt:0,ar:0,prov:0});
+  const cands=woCands();
+  const sum=a=>a.reduce((s,x)=>s+x.r.ar,0);
+  const addLoss=a=>a.reduce((s,x)=>s+Math.max(0,x.r.ar-x.r.prov),0);
+  const byTier=n=>cands.filter(x=>woTier(x.r).n===n);
+  const t1=byTier(1),t2=byTier(2);
+  const warned=cands.filter(x=>woTier(x.r).warn);
+  document.getElementById('pt-a').innerHTML='<button class="btn" onclick="window.print()"><i class="bi bi-printer"></i> 인쇄</button>';
+  let h='<div class="editable-note" style="background:#fef2f2;border-color:#fecaca;color:#991b1b">🔒 이 화면은 본인 계정에만 보입니다. 발표 준비용 상세 자료이며, 실시간 상태 변경은 <a onclick="setView(\'wo\')" style="color:inherit;text-decoration:underline;cursor:pointer">손실처리</a> 메뉴에서 하세요.</div>';
+  h+='<div class="kpis" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px">';
+  h+=`<div class="kpi" style="flex:1 1 200px;min-width:0"><div class="l">총 채권 / 수금률</div><div class="v">${eok(k.tot)}</div><div class="s">수금률 ${pct(k.collRate)} · ${E.length}건</div></div>`;
+  h+=`<div class="kpi" style="flex:1 1 200px;min-width:0"><div class="l">잔여 미수금</div><div class="v" style="color:#b45309">${eok(k.arSum)}</div><div class="s">전체의 ${pct(k.tot?k.arSum/k.tot:0)}</div></div>`;
+  h+=`<div class="kpi" style="flex:1 1 200px;min-width:0"><div class="l">손실처리 후보</div><div class="v" style="color:#b91c1c">${cands.length}건</div><div class="s">예상손실 ${eok2(addLoss(cands))}</div></div>`;
+  h+='</div>';
+  h+='<div class="card"><div class="sec">손실처리 '+cands.length+'건 — 2단계 우선순위</div>';
+  h+='<div class="kpis" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px">';
+  h+=`<div class="kpi" style="flex:1 1 220px;min-width:0"><div class="l">🔴 충당완료급 — 최우선 처리</div><div class="v" style="color:#b91c1c">${t1.length}건</div><div class="s">미수잔액 ${eok2(sum(t1))} · 손실영향 ${eok2(addLoss(t1))}</div></div>`;
+  h+=`<div class="kpi" style="flex:1 1 220px;min-width:0"><div class="l">🟠 회수의문급 — 개별검토</div><div class="v" style="color:#b45309">${t2.length}건</div><div class="s">미수잔액 ${eok2(sum(t2))} · 손실영향 ${eok2(addLoss(t2))}</div></div>`;
+  h+='</div>';
+  h+='<div style="background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--ink);line-height:1.8">';
+  h+=`정리하면, <b>충당완료급 ${t1.length}건</b>은 충당금이 이미 100% 설정돼 확정해도 회계상 영향이 없어 바로 진행해도 무리 없어 보이고, <b>회수의문급 ${t2.length}건</b>은 충당금이 덜 쌓여 있어 재무팀 확인이 필요합니다.`;
+  if(warned.length)h+=` 충당완료급 중 <b>${warned.length}건</b>은 과거 입금·분납 기록이 있으나 실제 수금일을 확인해보니 1년 이상 지난 옛 기록이라, "안전하다"는 판단과 별개로 확정 전 담당자 재확인을 권장드립니다.`;
+  h+=` 어떻게 진행하면 좋을지 의견 부탁드립니다.`;
+  h+='</div></div>';
+  h+='<div class="card"><div class="sec">'+cands.length+'건 전체 명세 <span class="hint">등급순 정렬 · 행 클릭 → 상세</span></div>';
+  h+='<div class="tbl-scroll"><table class="dt"><thead><tr><th>#</th><th class="l">거래처</th><th class="l">적요</th><th class="l">등급</th><th>미수잔액</th><th>충당금</th><th>추가손실</th><th class="l">근거</th><th class="l">담당</th></tr></thead><tbody>';
+  h+=cands.map((x,i)=>{const r=x.r,tier=woTier(r);return `<tr class="clk" onclick="openRow('${r.rid}')">
+    <td>${i+1}</td><td class="l"><b>${esc(r.name)}</b></td><td class="l memo" title="${esc(r.memo)}">${esc(r.memo)}</td><td class="l"><span class="chip" style="background:${tier.bg};color:${tier.c}">${tier.l}</span>${tier.warn?` <span class="chip" style="background:#fee2e2;color:#b91c1c" title="${esc(tier.warn)}">⚠ 재확인</span>`:''}</td>
+    <td><b>${fmt(r.ar)}</b></td><td>${fmt(r.prov)}</td><td style="font-weight:700">${fmt(Math.max(0,r.ar-r.prov))}</td>
+    <td class="l" style="white-space:normal;min-width:200px">${x.rs.map(s=>`<span class="chip" style="background:#f1f5f9;color:#475569;margin:1px 2px 1px 0">${esc(s)}</span>`).join('')||'-'}</td>
+    <td class="l">${esc(r.mgr)}</td></tr>`;}).join('');
+  h+='</tbody></table></div></div>';
+  h+='<div class="card"><div class="sec">예상 질문 & 답변 대비</div>';
+  h+='<div class="qa-grid">'+buildQA(k,delay,lt).map(([q,a])=>`<details class="qa" open><summary>${q}</summary><div class="a">${a}</div></details>`).join('')+'</div>';
+  h+='</div>';
+  return h;
+}
+// ═══ 데이터 업로드 ═══
+let _up=null;
+function viewUpload(){
+  let h='<div class="card"><div class="sec">재무팀 주간 엑셀 업로드</div>';
+  h+='<div style="font-size:13px;line-height:1.7;color:var(--body)">미수금세부현황 엑셀(주간 시트 <b>YYMMDD</b> 형식 포함)을 올리면:<br>· 최신 주간 시트 → 채권 상세 전체 갱신<br>· 모든 주간 시트 → 주간 추이에 병합 누적(기존 이력 유지)<br>· <b>미수금_관리대상_*</b> 시트가 있으면 관리대상 분류도 갱신<br>· 사이트에서 수정한 수금계획·의견·분류는 <b>그대로 유지</b>됩니다(원본 병합 방식)</div>';
+  h+='<div style="margin-top:16px"><input type="file" id="up-file" accept=".xlsx,.xls" onchange="onUpFile(this.files[0])"></div>';
+  h+='<div id="up-prev" style="margin-top:16px"></div></div>';
+  h+=`<div class="card"><div class="sec">현재 데이터</div><div style="font-size:13px;line-height:1.8">기준일 <b>${RAW.asOf}</b> · 채권 ${E.length}건 · 주간 스냅샷 ${(RAW.weekly||[]).length}개 · 관리대상 ${M.length}건 · 마지막 갱신 ${RAW.updatedAt||'-'}</div></div>`;
+  return h;
+}
+function xlDate(v){
+  if(v==null||v==='')return '';
+  if(v instanceof Date)return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+  if(typeof v==='number'){const d=new Date(Math.round((v-25569)*86400*1000));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
+  const s=String(v).trim();const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);return m?m[1]+'-'+m[2]+'-'+m[3]:s;
+}
+function xlNum(v){if(v==null||v==='')return 0;const n=Number(String(v).replace(/,/g,''));return isNaN(n)?0:n;}
+function xlStr(v){if(v==null)return '';if(v instanceof Date)return xlDate(v);return String(v).trim();}
+// 주간시트 헤더명 → 필드 매핑
+const HMAP={'구분':'no','거래처코드':'code','거래처 명':'name','거래처명':'name','사업자번호':'bizno','채권구분':'cls','시장 분류':'mkt','부서명':'dept','사업군 분류':'seg','매출일자':'saleDate','년도':'year','적요(매출 내용)':'memo','외화잔액':'fx','원화금액':'amt','수금일':'collDate','수금금액':'coll','감사/부실':'audit','대손처리':'bad','원화 미수채권금액':'ar','대손충당 설정률':'provRate','대손 충당금':'prov','잔존가':'residual','입금내역 및 특이사항':'payNote','경과년수':'elapsed','채권 특성 (TF)':'trait','채권 유형 (TF)':'type','담당자':'mgr','실무진 의견 (TF)':'opinion','지급 기일':'dueNote','향후 수금 계획 (담당자 및 소속부서장)':'plan'};
+const NUMF=new Set(['fx','amt','coll','bad','ar','provRate','prov','residual']);
+function parseWeeklySheet(ws){
+  const g=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+  // 헤더행 탐색(거래처명 포함 행)
+  let hi=-1;for(let i=0;i<Math.min(g.length,10);i++){const r=g[i]||[];if(r.some(c=>String(c||'').indexOf('거래처')>=0&&String(c||'').indexOf('코드')<0)&&r.some(c=>String(c||'')==='매출일자')){hi=i;break;}}
+  if(hi<0)return null;
+  const cols={};(g[hi]||[]).forEach((c,j)=>{const k=HMAP[String(c||'').trim()];if(k&&cols[k]===undefined)cols[k]=j;});
+  if(cols.name===undefined||cols.amt===undefined)return null;
+  const rows=[];
+  for(let i=hi+1;i<g.length;i++){const r=g[i]||[];if(!xlStr(r[cols.name]))continue;
+    const o={};
+    Object.keys(HMAP).forEach(h=>{const f=HMAP[h];if(cols[f]===undefined){o[f]=NUMF.has(f)?0:'';return;}
+      const v=r[cols[f]];
+      o[f]=(f==='saleDate'||f==='collDate')?xlDate(v):NUMF.has(f)?xlNum(v):xlStr(v);});
+    if(o.year)o.year=String(o.year).replace(/[^0-9.]/g,'').split('.')[0];
+    rows.push(o);}
+  return rows;
+}
+// 행단위 주간 변동(diff) — 파이썬 시드(ar_seed.py diff_weeks)와 동일 로직
+function diffRows(prevRows,curRows,d,prevD){
+  const pm={};prevRows.forEach(o=>pm[o.rid]=o);
+  const cm={};curRows.forEach(o=>cm[o.rid]=o);
+  const coll=[],red=[],neu=[],adj=[];
+  let gone=Object.keys(pm).filter(r=>!cm[r]).map(r=>pm[r]);
+  Object.keys(cm).forEach(r=>{
+    const o=cm[r];let p=pm[r];
+    if(!p){
+      const sk=o.code+'|'+o.saleDate+'|'+String(Math.trunc(o.amt));
+      const gi=gone.findIndex(x=>x.code+'|'+x.saleDate+'|'+String(Math.trunc(x.amt))===sk);
+      if(gi>=0){p=gone[gi];gone.splice(gi,1);}
+      else if(o.ar>0){neu.push({n:o.name,v:o.ar,m:o.memo,g:o.mgr,t:o.type});return;}
+      else return;
+    }
+    if(p.ar>0&&o.ar===0)coll.push({n:o.name,v:p.ar,m:o.memo,g:o.mgr,t:o.type});
+    else if(o.ar>0&&o.ar<p.ar)red.push({n:o.name,v:p.ar-o.ar,d0:o.ar,m:o.memo,g:o.mgr,t:o.type});
+  });
+  gone.forEach(o=>{if(o.ar>0)adj.push({n:o.name,v:o.ar,m:o.memo,g:o.mgr,t:o.type});});
+  return {d,prev:prevD,coll,red,new:neu,adj,
+    sumColl:coll.reduce((s,x)=>s+x.v,0)+red.reduce((s,x)=>s+x.v,0),
+    sumNew:neu.reduce((s,x)=>s+x.v,0),
+    sumAdj:adj.reduce((s,x)=>s+x.v,0)};
+}
+function onUpFile(file){
+  if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+      const wnames=wb.SheetNames.filter(n=>/^\d{6}$/.test(n)).sort();
+      if(!wnames.length){document.getElementById('up-prev').innerHTML='<div class="editable-note">주간 시트(YYMMDD)를 찾지 못했습니다.</div>';return;}
+      // 모든 주간 시트 → 집계+행단위 변동(diff), 최신 시트 → 상세
+      const assignRid=rows=>{const seen={};rows.forEach(o=>{const b=rid(o.code+'|'+o.saleDate+'|'+String(Math.trunc(o.amt))+'|'+o.memo);const n=seen[b]||0;seen[b]=n+1;o.rid=n===0?b:b+'-'+n;});};
+      const weekly=[],fileChanges=[];let latestRows=null,latestD='',prevRows=null,prevD='';
+      wnames.forEach(sn=>{
+        const rows=parseWeeklySheet(wb.Sheets[sn]);if(!rows)return;
+        assignRid(rows);
+        const d='20'+sn.slice(0,2)+'-'+sn.slice(2,4)+'-'+sn.slice(4,6);
+        const types={};rows.forEach(o=>{const t=o.type||'미분류';types[t]=types[t]||{cnt:0,ar:0};types[t].cnt++;types[t].ar+=o.ar;});
+        weekly.push({d,cnt:rows.length,amt:rows.reduce((s,o)=>s+o.amt,0),coll:rows.reduce((s,o)=>s+o.coll,0),bad:rows.reduce((s,o)=>s+o.bad,0),ar:rows.reduce((s,o)=>s+o.ar,0),prov:rows.reduce((s,o)=>s+o.prov,0),types});
+        if(prevRows){const ch=diffRows(prevRows,rows,d,prevD);if(ch.coll.length||ch.red.length||ch.new.length||ch.adj.length)fileChanges.push(ch);}
+        prevRows=rows;prevD=d;
+        if(sn===wnames[wnames.length-1]){latestRows=rows;latestD=d;}
+      });
+      if(!latestRows){document.getElementById('up-prev').innerHTML='<div class="editable-note">주간 시트 파싱 실패 — 헤더 형식을 확인해주세요.</div>';return;}
+      // 관리대상 시트(있으면)
+      let mgmt=RAW.mgmt||{asOf:'',base:'',summary:{},items:[]};
+      const mgName=wb.SheetNames.find(n=>n.indexOf('미수금_관리대상')===0);
+      if(mgName){const mg=parseMgmtSheet(wb.Sheets[mgName],mgName,latestRows);if(mg)mgmt=mg;}
+      // weekly·changes 병합(기존 이력 유지, 같은 날짜는 새 값)
+      const wmap={};((RAW.weekly)||[]).forEach(x=>wmap[x.d]=x);weekly.forEach(x=>wmap[x.d]=x);
+      const merged=Object.values(wmap).sort((a,b)=>a.d.localeCompare(b.d));
+      const cmap={};((RAW.changes)||[]).forEach(x=>cmap[x.d]=x);fileChanges.forEach(x=>cmap[x.d]=x);
+      const mergedCh=Object.values(cmap).sort((a,b)=>a.d.localeCompare(b.d));
+      _up={asOf:latestD,updatedAt:today(),rows:latestRows,weekly:merged,changes:mergedCh,mgmt};
+      const arSum=latestRows.reduce((s,o)=>s+o.ar,0);
+      const prevAr=(RAW.weekly&&RAW.weekly.length)?RAW.weekly[RAW.weekly.length-1].ar:0;
+      // 안전장치: 건수 급감(재무팀 파일 이상 가능성)·기준일 역행 경고
+      const warns=[];
+      if(RAW.rows&&latestRows.length<RAW.rows.length*0.95)warns.push('채권 건수가 현재('+RAW.rows.length+'건)보다 5% 이상 적습니다('+latestRows.length+'건) — 파일이 일부만 담겼는지 확인하세요.');
+      if(latestD<((RAW&&RAW.asOf)||''))warns.push('파일의 최신 주간시트('+latestD+')가 현재 기준일('+RAW.asOf+')보다 과거입니다 — 적용 시 데이터가 되돌아갑니다.');
+      _up._warns=warns;
+      document.getElementById('up-prev').innerHTML=`
+        <div class="card" style="background:#f8fafc;margin:0">
+        <div class="sec">파싱 결과 미리보기</div>
+        <div style="font-size:13px;line-height:1.9">
+        기준일(최신 주간시트): <b>${latestD}</b> ${latestD<=((RAW&&RAW.asOf)||'')?'<span class="chip" style="background:#fee2e2;color:#b91c1c">현재 데이터와 같거나 이전 날짜</span>':'<span class="chip" style="background:#dcfce7;color:#15803d">신규</span>'}<br>
+        채권: <b>${latestRows.length}건</b> · 미수잔액 <b>${eok2(arSum)}</b> (현재 ${eok2(prevAr)} → ${arSum-prevAr>=0?'+':''}${eok2(arSum-prevAr)})<br>
+        주간 스냅샷: 파일 ${weekly.length}개 + 기존 병합 = <b>${merged.length}개</b> · 변동이력 <b>${mergedCh.length}건</b>${fileChanges.length?` (최신주 수금 ${fileChanges[fileChanges.length-1].coll.length+fileChanges[fileChanges.length-1].red.length}건 ${eok2(fileChanges[fileChanges.length-1].sumColl)} · 신규 ${fileChanges[fileChanges.length-1].new.length}건)`:''}<br>
+        관리대상: ${mgName?('<b>'+mgmt.items.length+'건</b> (시트 '+esc(mgName)+' 갱신)'):'기존 유지 ('+mgmt.items.length+'건)'}
+        </div>
+        ${_up._warns.length?`<div class="editable-note" style="background:#fef2f2;border-color:#fecaca;color:#b91c1c;margin-top:10px">${_up._warns.map(w2=>'⚠ '+esc(w2)).join('<br>')}</div>`:''}
+        <div style="margin-top:12px"><button class="btn warn" onclick="applyUpload()">✓ 이 내용으로 갱신 적용</button> <button class="btn" onclick="_up=null;render()">취소</button></div>
+        </div>`;
+    }catch(err){document.getElementById('up-prev').innerHTML='<div class="editable-note">파싱 오류: '+esc(err.message)+'</div>';}
+  };
+  rd.readAsArrayBuffer(file);
+}
+function parseMgmtSheet(ws,name,latestRows){
+  try{
+    const g=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    const grid=g.map(r=>(r||[]).map(c=>xlStr(c)));
+    const mg={asOf:'',base:'',summary:{},items:[]};
+    const tail=name.split('_').pop();if(/^\d{6}$/.test(tail))mg.asOf='20'+tail.slice(0,2)+'-'+tail.slice(2,4)+'-'+tail.slice(4,6);
+    for(const row of grid){for(const c of row){const m=String(c).match(/기준일 (\d{4}-\d{2}-\d{2})/);if(m)mg.base=m[1];}}
+    let hi=-1;grid.forEach((row,i)=>{if(hi<0&&row.indexOf('추천분류')>=0&&row.indexOf('거래처명')>=0)hi=i;});
+    // 요약
+    grid.forEach((row,i)=>{
+      if(row.indexOf('관리제외')>=0&&row.indexOf('집중관리')>=0&&i+2<grid.length&&!mg.summary['관리제외']){
+        const hidx={};row.forEach((c,j)=>{if(c)hidx[c]=j;});
+        ['관리제외','집중관리','검토필요','관리대상 합계'].forEach(k=>{if(hidx[k]!==undefined)mg.summary[k]={cnt:xlNum(grid[i+1][hidx[k]]),ar:xlNum(grid[i+2][hidx[k]])};});
+      }});
+    if(hi<0)return null;
+    const h=grid[hi];const col={};h.forEach((c,j)=>{if(c&&col[c]===undefined)col[c]=j;});
+    const nn=s=>String(s||'').replace(/\([^)]*\)/g,'').replace(/\s/g,'');
+    for(let i=hi+1;i<grid.length;i++){const row=grid[i];if(!row[col['거래처명']])continue;
+      const it={no:row[col['No']],name:row[col['거래처명']],year:row[col['발생년도']]||'',elapsed:row[col['경과년수']]||'',ar:xlNum(row[col['미수금액(원)']]),mgr:row[col['담당자']]||'',state:row[col['현재상태']]||'',cls:row[col['추천분류']]||'',basis:row[col['분류 근거']]||'',opinion:row[col['관리 의견']]||''};
+      let mo=latestRows.find(o=>String(Math.trunc(xlNum(o.no)||0))===String(Math.trunc(xlNum(it.no)||0))&&o.name===it.name);
+      if(!mo)mo=latestRows.find(o=>o.name===it.name&&Math.abs(o.ar-it.ar)<1);
+      if(!mo)mo=latestRows.find(o=>nn(o.name)===nn(it.name)&&Math.abs(o.ar-it.ar)<1);
+      it.rid=mo?mo.rid:('_um|'+nn(it.name)+'|'+Math.trunc(it.ar||0));
+      mg.items.push(it);}
+    return mg.items.length?mg:null;
+  }catch(e){return null;}
+}
+let _applying=false;
+async function applyUpload(){
+  if(!_up||_applying)return;
+  if(_up._warns&&_up._warns.length&&!confirm('경고가 있습니다:\n\n'+_up._warns.join('\n')+'\n\n그래도 적용할까요?'))return;
+  _applying=true;
+  try{
+    delete _up._warns;
+    const payload=_up;
+    const r=await _sb.from('cons_cache').upsert({key:'ar_kr',data:payload},{onConflict:'key'});
+    if(r.error){toast('저장 실패: '+r.error.message);return;}
+    RAW=payload;_up=null;applyEdits();toast('갱신 완료 ✓ 기준일 '+RAW.asOf);setView('home');
+  }finally{_applying=false;}
+}
+
+// ═══ 상세/편집 모달 ═══
+function openRow(ridv){
+  const r=E.find(x=>x.rid===ridv);if(!r){toast(String(ridv).indexOf('_um|')===0?'채권 원장과 매칭되지 않은 항목이라 상세가 없습니다':'상세 데이터를 찾을 수 없습니다');return;}
+  const mi=M.find(i=>i.rid===ridv);
+  const ed=EDITS[ridv]||{};
+  const F=(l,v)=>`<div class="fld"><label>${l}</label><div class="fv">${esc(v==null||v===''?'-':v)}</div></div>`;
+  let h=`<div class="mhd"><div><h3>${esc(r.name)}</h3><div class="hint">${esc(r.saleDate)} · ${esc(r.memo)}</div></div><button class="x" onclick="closeModal()">✕</button></div><div class="mbody">`;
+  h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${typeChip(r.type)}${mi?clsChip(mi.cls):''}${r._edited||ed.cls||ed.mgmtOp?'<span class="chip" style="background:#ecfdf5;color:#047857">사이트 수정됨'+(ed._by?' · '+esc(ed._by.split('@')[0])+' '+esc(ed._at||''):'')+'</span>':''}</div>`;
+  h+='<div class="fgrid">'
+    +F('원화금액',fmt(r.amt)+'원')+F('수금금액',fmt(r.coll)+'원'+(r.collDate?' ('+r.collDate+')':''))
+    +F('미수채권금액',fmt(r.ar)+'원')+F('대손처리',fmt(r.bad)+'원')
+    +F('대손충당금',fmt(r.prov)+'원')+F('경과년수',r.elapsed)
+    +F('거래처코드',r.code)+F('사업자번호',r.bizno)
+    +F('채권 특성',r.trait)
+    +F('지급기일',r.dueNote)+F('발생년도',r.year)
+    +'</div>';
+  if(mi)h+='<div class="fgrid">'+F('관리 분류근거',mi.basis)+'</div>';
+  // 이 거래처의 다른 채권
+  const rel=E.filter(x=>x.name===r.name&&x.rid!==r.rid);
+  if(rel.length){
+    const relAr=rel.reduce((s,x)=>s+x.ar,0);
+    h+=`<div class="fld" style="margin-bottom:14px"><label>🔗 이 거래처의 다른 채권 ${rel.length}건 (잔액 합계 ${fmt(relAr)}원 · 본건 포함 ${fmt(relAr+r.ar)}원)</label>`
+      +rel.sort((a,b)=>b.ar-a.ar).slice(0,8).map(x=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:12.5px;cursor:pointer" onclick="openRow('${x.rid}')"><span style="color:var(--muted);width:80px;flex-shrink:0">${esc(x.saleDate)}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.memo)}</span>${typeChip(x.type)}<b style="color:${x.ar>0?'#b45309':'var(--muted)'}">${fmt(x.ar)}</b></div>`).join('')
+      +(rel.length>8?`<div class="hint">외 ${rel.length-8}건 — 목록에서 거래처별 보기</div>`:'')+'</div>';
+  }
+  // 수금 활동 이력
+  const log=(EDITS[ridv]&&EDITS[ridv].log)||[];
+  if(log.length){
+    h+=`<div class="fld" style="margin-bottom:14px"><label>🕘 수금 활동 이력 ${log.length}건</label>`
+      +log.slice().reverse().map(x=>`<div style="display:flex;gap:8px;padding:5px 0;font-size:12.5px;border-bottom:1px dashed var(--line)"><span style="color:var(--muted);width:80px;flex-shrink:0">${esc(x.d)}</span><span style="flex:1;color:var(--ink)">${esc(x.t)}</span><span class="hint">${esc((x.by||'').split('@')[0])}</span></div>`).join('')+'</div>';
+  }
+  h+='<div class="editable-note">✏️ 아래 항목은 수정 가능합니다. 저장 시 원본과 별도로 보관되어, 엑셀 재업로드 후에도 유지됩니다.</div>';
+  if(r._mgrConflict)h+=`<div class="editable-note" style="background:#fef2f2;border-color:#fecaca;color:#991b1b">⚠ 재무팀 최신 파일에는 담당자가 <b>${esc(r._mgrConflict)}</b>(으)로 되어 있어요. 지금 화면엔 사이트에서 입력한 값이 우선 표시 중입니다 — 재무팀 값이 맞다면 아래 담당자 칸을 그 값으로 고쳐서 다시 저장하세요.</div>`;
+  h+=`<div class="fgrid" style="grid-template-columns:1fr 1fr">
+    <div class="fld"><label>담당자</label><input id="ed-mgr" value="${esc(r.mgr||'')}" placeholder="예: 홍길동" onkeydown="if(event.key==='Enter'){event.preventDefault();saveEdit('${ridv}')}"></div>
+    <div class="fld"><label>채권유형</label><select id="ed-type">${TYPE_ORDER.map(t=>`<option ${r.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    ${mi?`<div class="fld"><label>관리 분류</label><select id="ed-cls">${['집중관리','검토필요','관리제외'].map(c=>`<option ${mi.cls===c?'selected':''}>${c}</option>`).join('')}</select></div>`:''}
+    <div class="fld"><label>다음 조치일 <span class="hint">(도래 시 대시보드 팔로우업에 표시)</span></label><input type="date" id="ed-nextDate" value="${esc(r.nextDate||'')}"></div>
+    <div class="fld"><label>다음 조치 내용</label><input id="ed-nextAct" value="${esc(r.nextAct||'')}" placeholder="예: 분납 재약정 통화" onkeydown="if(event.key==='Enter'){event.preventDefault();saveEdit('${ridv}')}"></div>
+  </div>
+  <div class="fld" style="margin-bottom:10px"><label>➕ 활동 기록 추가 <span class="hint">(저장 시 오늘 날짜·작성자로 이력에 쌓임)</span></label><textarea id="ed-log" placeholder="예: 원장 통화 — 7월 말 500만원 입금 약속"></textarea></div>
+  <div class="fld" style="margin-bottom:10px"><label>향후 수금 계획</label><textarea id="ed-plan">${esc(r.plan)}</textarea></div>
+  <div class="fld" style="margin-bottom:10px"><label>입금내역 · 특이사항</label><textarea id="ed-payNote">${esc(r.payNote)}</textarea></div>
+  <div class="fld" style="margin-bottom:10px"><label>실무진 의견</label><textarea id="ed-opinion">${esc(r.opinion)}</textarea></div>
+  ${mi?`<div class="fld" style="margin-bottom:10px"><label>관리 의견</label><textarea id="ed-mgmtOp">${esc(mi.opinion)}</textarea></div>`:''}
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+    ${EDITS[ridv]?'<button class="btn" onclick="resetEdit(\''+ridv+'\')">↩ 원본 복원</button>':''}
+    <button class="btn" onclick="closeModal()">닫기</button>
+    <button class="btn pri" onclick="saveEdit('${ridv}')">저장</button>
+  </div></div>`;
+  document.getElementById('mbox').innerHTML=h;
+  document.getElementById('modal').classList.add('open');
+  setTimeout(function(){var _fm=document.getElementById('ed-mgr');if(_fm)_fm.focus();},30);
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+async function saveEdit(ridv){
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
+  const r=(RAW.rows||[]).find(x=>x.rid===ridv)||{};
+  const mi=((RAW.mgmt&&RAW.mgmt.items)||[]).find(i=>i.rid===ridv);
+  const e=Object.assign({},EDITS[ridv]||{});
+  const set=(k,v,orig)=>{if(v===undefined)return;if(v===String(orig==null?'':orig).trim()){delete e[k];}else{e[k]=v;}};
+  set('mgr',g('ed-mgr'),r.mgr);set('type',g('ed-type'),r.type);set('plan',g('ed-plan'),r.plan);set('payNote',g('ed-payNote'),r.payNote);set('opinion',g('ed-opinion'),r.opinion);
+  set('nextDate',g('ed-nextDate'),'');set('nextAct',g('ed-nextAct'),'');
+  if(mi){set('cls',g('ed-cls'),mi.cls);set('mgmtOp',g('ed-mgmtOp'),mi.opinion);}
+  const logTxt=g('ed-log');
+  if(logTxt){e.log=(e.log||[]).concat([{d:today(),by:ME,t:logTxt}]);}
+  if(e.log&&!e.log.length)delete e.log;
+  const keys=Object.keys(e).filter(k=>k[0]!=='_');
+  if(!keys.length){delete EDITS[ridv];}
+  else{e._by=ME;e._at=today();EDITS[ridv]=e;}
+  const res=await _sb.from('cons_cache').upsert({key:'ar_kr_edits',data:EDITS},{onConflict:'key'});
+  if(res.error){toast('저장 실패: '+res.error.message);return;}
+  applyEdits();closeModal();render();toast('저장됨 ✓');
+}
+async function resetEdit(ridv){
+  if(!EDITS[ridv])return closeModal();
+  if(!confirm('이 채권의 사이트 수정분을 지우고 엑셀 원본으로 되돌릴까요?'))return;
+  delete EDITS[ridv];
+  const res=await _sb.from('cons_cache').upsert({key:'ar_kr_edits',data:EDITS},{onConflict:'key'});
+  if(res.error){toast('실패: '+res.error.message);return;}
+  applyEdits();closeModal();render();toast('복원됨');
+}
+
+boot();
+</script>
+<script>
+/* 서비스워커 등록: 일반 새로고침(F5)에도 항상 최신 HTML(network-first) — 하드리프레시 불필요 */
+if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){}); } if(window.caches&&caches.keys){ caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});}).catch(function(){}); }
+</script>
+<script>/* WT_UPDATE_V1 — 새 버전 감지 시 상단 새로고침 바 (전 사이트 공통 스니펫, 개별 수정 금지) */
+(function(){var base=null;
+function bar(){if(document.getElementById('wt-upd'))return;var d=document.createElement('div');d.id='wt-upd';
+d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483000;background:#16324f;color:#fff;font-family:inherit;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:center;padding:9px 14px;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+d.innerHTML='<i class="bi bi-arrow-clockwise"></i><span>새 버전이 배포되었습니다.</span><button onclick="location.reload()" style="background:#fff;color:#16324f;border:none;border-radius:7px;padding:4px 14px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit">지금 새로고침</button><button onclick="this.parentNode.remove()" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">나중에</button>';
+document.body.appendChild(d);}
+function et(){return fetch(location.pathname+'?uchk='+Date.now(),{method:'HEAD',cache:'no-store'}).then(function(r){return r.headers.get('etag')||r.headers.get('last-modified')||'';}).catch(function(){return null;});}
+function chk(){et().then(function(e){if(e==null||e==='')return;if(base===null){base=e;return;}if(e!==base)bar();});}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)chk();});
+setInterval(chk,5*60*1000);chk();
+})();</script>
+</body>
+</html>

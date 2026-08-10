@@ -619,7 +619,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 })();</script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';
@@ -2602,7 +2602,7 @@ async function doLogin() {
 
 
 
-  _currentUser = {email: member.email, name: member.display_name, role: member.email === 'pmw0406@demo.local' ? 'master' : member.role, id: member.id};
+  _currentUser = {email: member.email, name: member.display_name, role: member.email === 'master@demo.local' ? 'master' : member.role, id: member.id};
 
   _applyLoginUI();
 
@@ -2683,7 +2683,7 @@ function _closeSidebar() {
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; if(s&&s.user&&s.user.email==='pmw0406@demo.local'){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; if(s&&s.user&&s.user.email==='master@demo.local'){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -7362,7 +7362,7 @@ window.onload = async function() {
 
     var role = nvcnM.role || 'general';
 
-    _currentUser = {email: sUser.email, name: displayName, role: sUser.email === 'pmw0406@demo.local' ? 'master' : role, id: sUser.id};
+    _currentUser = {email: sUser.email, name: displayName, role: sUser.email === 'master@demo.local' ? 'master' : role, id: sUser.id};
 
     _applyLoginUI();
 

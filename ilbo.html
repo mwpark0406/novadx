@@ -302,7 +302,7 @@ table.rpt td[colspan],.ptable td[colspan]{padding:14px 10px}
 </style>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';
@@ -895,7 +895,7 @@ function doLogin(){
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -926,7 +926,7 @@ window.addEventListener('popstate',function(e){
 /* WT_NAV: bfcache — 로그아웃/만료/계정전환 후 뒤로가기로 이전 계정 화면 노출 차단 */
 window.addEventListener('pageshow',function(e){ if(e.persisted){ _sb.auth.getSession().then(function(r){ var s=r&&r.data&&r.data.session; if(!s||(_user&&s.user&&s.user.id!==_user.id)) location.reload(); }); } });
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["daily"];                 /* 이 사이트 자신의 registry key(들) */
 var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
@@ -976,7 +976,7 @@ function enterApp(user){
     var pf=(r&&r.data)||{};
     /* 보안: site_registry 키('daily') 정확 매칭(부분문자열 → 토큰 비교) */
     var _acl = String(pf.access||'').split(',').map(function(s){return s.trim();});
-    var allowed = user.email==='pmw0406@demo.local' || pf.role==='admin' || _acl.indexOf('daily')>=0;
+    var allowed = user.email==='master@demo.local' || pf.role==='admin' || _acl.indexOf('daily')>=0;
     if(!allowed){ alert('일매출일보 접근 권한이 없습니다.'); location.replace(CENTRAL); return; }  /* 권한 없음: ret 없이(무한 루프 방지) · signOut 금지(전 사이트 공유 세션 파괴) */
     document.getElementById('login').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
@@ -984,7 +984,7 @@ function enterApp(user){
     document.getElementById('who').textContent=user.email;
     _wtRenderSwitcher();
     // 업로드 가능한 사람만 미반영분 관리·업로드 노출
-    var canUp = user.email==='pmw0406@demo.local' || String(pf.dept||'').indexOf('영업전략')>=0;
+    var canUp = user.email==='master@demo.local' || String(pf.dept||'').indexOf('영업전략')>=0;
     var tp=document.getElementById('tg-pending'); if(tp) tp.style.display=canUp?'':'none';
     var ub=document.getElementById('upload-btn'); if(ub) ub.style.display=canUp?'':'none';
     _canUp=canUp;

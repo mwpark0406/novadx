@@ -517,7 +517,7 @@ document.addEventListener('wheel',e=>{
   if(p.at&&p.rt){ try{ _sb.auth.setSession({access_token:p.at,refresh_token:p.rt}); }catch(e){} }
   try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
 })();
-async function allowed(user){ if((user.email||'')==='pmw0406@demo.local')return true;
+async function allowed(user){ if((user.email||'')==='master@demo.local')return true;
   try{ const {data:p}=await _sb.from('crm_profiles').select('access,role,dept').eq('id',user.id).maybeSingle();
     if(!p)return false; if(p.role==='admin')return true;
     if(String(p.dept||'').replace(/\s/g,'').includes('영업전략'))return true;
@@ -555,7 +555,7 @@ async function doLogout(){ try{await _sb.auth.signOut();}catch(e){} Object.keys(
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
           var s=r&&r.data&&r.data.session;
-          var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];
+          var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];
           if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; }
           if(s) _logout(); else _arm();
         }).catch(function(){ _arm(); });
@@ -1372,7 +1372,7 @@ function showChg(){ window.__dno=null; const c=window.__chg;
 /* ── 사이트 스위처 ── */
 async function renderSwitcher(){
   let reg=[]; try{ reg=(await _sb.from('site_registry').select('*').order('sort_order')).data||[]; }catch(e){}
-  let ac=[],ad=false,stf=false; try{ const s=(await _sb.auth.getSession()).data.session; if(s&&s.user){ if(s.user.email==='pmw0406@demo.local')ad=true; const p=await _sb.from('crm_profiles').select('access,role,dept').eq('id',s.user.id).maybeSingle(); if(p&&p.data){ac=(p.data.access||'').split(',').map(x=>x.trim()).filter(Boolean); if(p.data.role==='admin')ad=true; stf=String(p.data.dept||'').replace(/\s/g,'').includes('영업전략');} } }catch(e){}
+  let ac=[],ad=false,stf=false; try{ const s=(await _sb.auth.getSession()).data.session; if(s&&s.user){ if(s.user.email==='master@demo.local')ad=true; const p=await _sb.from('crm_profiles').select('access,role,dept').eq('id',s.user.id).maybeSingle(); if(p&&p.data){ac=(p.data.access||'').split(',').map(x=>x.trim()).filter(Boolean); if(p.data.role==='admin')ad=true; stf=String(p.data.dept||'').replace(/\s/g,'').includes('영업전략');} } }catch(e){}
   const vis=s=>{ if(ac.indexOf(s.key)>=0)return true; if(s.admin_bypass&&ad)return true; if(s.extra_visible_rule){try{return !!((function(){return false;}))(ac,ad,stf);}catch(e){return false;}} return false; };
   const seen={}; const items=reg.filter(s=>{ if(s.key==='kor_sales')return false; if(!vis(s))return false; const d=(s.url==='LOCAL'||s.key==='korea')?'central':s.url; if(seen[d])return false; seen[d]=1; return true; });
   document.getElementById('sw-dd').innerHTML='<div class="dd-head">사이트 이동</div>'+(items.map((s,i)=>'<div class="dd-item" onclick="swGo('+i+')"><span class="bdg" style="background:'+(s.grad_from||'#64748b')+'">'+esc(s.badge||'')+'</span>'+esc(s.title||s.key)+'</div>').join('')||'<div class="dd-item mut">이동 가능한 사이트 없음</div>');
@@ -1395,7 +1395,7 @@ setInterval(chk,5*60*1000);chk();
 })();</script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';

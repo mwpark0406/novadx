@@ -529,7 +529,7 @@ const GRADE_C={'A':'c-red','B':'c-amber','C':'c-gray'};
 let ME='',curView='dash',D=null,LOCAL=false;
 let _role='',_access='',_canPerf=false,_canHQ=false;
 async function loadPerm(uid){
-  if(ME==='pmw0406@demo.local'){_canPerf=true;_canHQ=true;return;}   // 소유자(master)
+  if(ME==='master@demo.local'){_canPerf=true;_canHQ=true;return;}   // 소유자(master)
   try{const{data}=await _sb.from('crm_profiles').select('role,access').eq('id',uid).maybeSingle();
     if(data){_role=data.role||'';_access=(data.access||'');
       var acc=_access.split(',').map(function(x){return x.trim();});
@@ -555,7 +555,7 @@ async function enter(user){ME=user.email||'';
   document.getElementById('uem').textContent=ME;document.getElementById('unm').textContent=ME.split('@')[0]||'사용자';document.getElementById('uav').textContent=(ME[0]||'P').toUpperCase();
   await loadPerm(user.id);
   // 접근 게이트: 미국법인(us) 권한자 · 전체관리자(admin) · 소유자(master)만
-  if(!(ME==='pmw0406@demo.local' || _role==='admin' || (_access||'').split(',').map(function(s){return s.trim();}).indexOf('us')>=0)){
+  if(!(ME==='master@demo.local' || _role==='admin' || (_access||'').split(',').map(function(s){return s.trim();}).indexOf('us')>=0)){
     location.replace(CENTRAL); return;
   }
   const{data}=await _sb.from('cons_cache').select('data').eq('key',KEY).maybeSingle();
@@ -589,7 +589,7 @@ async function doLogout(){await _sb.auth.signOut();try{sessionStorage.removeItem
 /* ── 자동 로그아웃: 30분 무동작 시 (마스터 제외) ── */
 (function(){var IDLE_MS=30*60*1000,_it;
   function _logout(){if(typeof doLogout==='function'){doLogout();return;}try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
-  function _fire(){try{if(typeof _sb!=='undefined'&&_sb&&_sb.auth&&_sb.auth.getSession){_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){_arm();return;}if(s){_logout();}else{_arm();}}).catch(function(){_logout();});}else{_logout();}}catch(e){_logout();}}
+  function _fire(){try{if(typeof _sb!=='undefined'&&_sb&&_sb.auth&&_sb.auth.getSession){_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){_arm();return;}if(s){_logout();}else{_arm();}}).catch(function(){_logout();});}else{_logout();}}catch(e){_logout();}}
   function _arm(){clearTimeout(_it);_it=setTimeout(_fire,IDLE_MS);}
   ['mousemove','mousedown','keydown','touchstart','scroll','click','wheel'].forEach(function(ev){document.addEventListener(ev,_arm,{passive:true,capture:true});});
   _arm();})();
@@ -597,7 +597,7 @@ async function changePw(){const np=prompt('새 비밀번호 (6자 이상)');if(n
 async function goSite(url,extra){try{const{data:{session:s}}=await _sb.auth.getSession();if(s&&url.indexOf('#')<0)url+='#at='+encodeURIComponent(s.access_token)+'&rt='+encodeURIComponent(s.refresh_token)+(extra||'');else if(extra)url+=(url.indexOf('#')<0?'#':'&')+String(extra).replace(/^[#&]+/,'');}catch(e){}location.href=url;}
 
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["us"];                 /* 이 사이트 자신의 registry key(들) */
 var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
@@ -2550,7 +2550,7 @@ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().the
 </script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';

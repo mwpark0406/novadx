@@ -522,7 +522,7 @@ table{font-variant-numeric:tabular-nums}
 </style>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';
@@ -622,7 +622,7 @@ const CLS_META={'집중관리':{c:'#b45309',bg:'#fef3c7'},'검토필요':{c:'#b9
 function clsChip(c){const m=CLS_META[c]||{c:'#64748b',bg:'#f1f5f9'};return `<span class="chip" style="background:${m.bg};color:${m.c}">${esc(c||'-')}</span>`;}
 
 // ── 부트/로그인 ──
-async function arAllowed(user){const MASTER='pmw0406@demo.local';if((user.email||'')===MASTER)return true;
+async function arAllowed(user){const MASTER='master@demo.local';if((user.email||'')===MASTER)return true;
   // 미수금(민감 재무데이터) = access 'ar' 권한자만. admin 자동통과 없음(마스터+지정자 전용).
   try{const{data:p}=await _sb.from('crm_profiles').select('access').eq('id',user.id).maybeSingle();
     if(!p)return false;
@@ -638,7 +638,7 @@ async function changePw(){const np=prompt('새 비밀번호 (6자 이상)');if(n
 /* 자동 로그아웃: 30분 무동작(마스터 제외) */
 (function(){var IDLE_MS=30*60*1000,_it;
   function _logout(){try{_sb.auth.signOut().then(function(){location.href=CENTRAL;});}catch(e){location.href=CENTRAL;}}
-  function _fire(){try{_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){_arm();return;}if(s)_logout();else _arm();}).catch(function(){_logout();});}catch(e){_logout();}}
+  function _fire(){try{_sb.auth.getSession().then(function(r){var s=r&&r.data&&r.data.session;var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local'];if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){_arm();return;}if(s)_logout();else _arm();}).catch(function(){_logout();});}catch(e){_logout();}}
   function _arm(){clearTimeout(_it);_it=setTimeout(_fire,IDLE_MS);}
   ['mousemove','mousedown','keydown','touchstart','scroll','click','wheel'].forEach(function(ev){document.addEventListener(ev,_arm,{passive:true,capture:true});});
   _arm();})();
@@ -646,7 +646,7 @@ function ddToggle(id){const el=document.getElementById(id);if(!el)return;const w
 document.addEventListener('click',e=>{if(!e.target.closest('.sw-wrap'))document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open'));});
 
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["ar"];
 var _WT_CENTRAL='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];

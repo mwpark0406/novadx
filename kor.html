@@ -3774,7 +3774,7 @@ async function _showLauncherOrApp(user) {
   _isMgr   = _isAdmin || profile?.role === 'manager';
   _isStrat = String(profile?.dept||'').replace(/\s/g,'').includes('영업전략');   // 영업전략파트 → 현황판 열람 허용
   // 임시비밀번호를 아직 안 바꾼 사용자 → 강제 변경(마스터 제외)
-  if(profile.temp_pw && String(profile.temp_pw).trim() && user.email !== 'pmw0406@demo.local'){ _hideLoading(); _showForcePw(); return; }
+  if(profile.temp_pw && String(profile.temp_pw).trim() && user.email !== 'master@demo.local'){ _hideLoading(); _showForcePw(); return; }
   // 새로고침 시 이전 상태 복원
   if(sessionStorage.getItem('wt_app') === 'admin' && (_isStrat || _isAdmin)) {
     document.getElementById('launcher-screen').style.display='flex';
@@ -5488,7 +5488,7 @@ async function goUpload(){
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 기존 데모 3계정은 예외 · 신규 계정부터 30분 유휴 자동로그아웃 적용 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 기존 데모 3계정은 예외 · 신규 계정부터 30분 유휴 자동로그아웃 적용 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -11629,7 +11629,7 @@ async function loadUserRole() {
   _isStrat = String(data?.dept||'').replace(/\s/g,'').includes('영업전략');   // 영업전략파트 → 관리자 페이지 접근 허용
   try{ window.__WT_EMAIL = (session.user.email||''); }catch(e){}   // 요청·신고 작성자 정확 표기용
   setTimeout(function(){ try{ _fbCheckResolved(); }catch(e){} }, 3000);   // 내 요청 완료 알림 팝업
-  _isMaster = session.user.email === 'pmw0406@demo.local';
+  _isMaster = session.user.email === 'master@demo.local';
   _isMgr   = _isAdmin || data?.role === 'manager';
   _meId    = session.user.id;
   _meName  = data?.display_name || session.user.email?.split('@')[0] || '';
@@ -11711,7 +11711,7 @@ async function renderAdminUsers() {
   for(let attempt=0; attempt<6; attempt++){
     const {data:{session:_ms}} = await _sb.auth.getSession();
     if(_ms && _ms.user){
-      _isMaster = _ms.user.email === 'pmw0406@demo.local';
+      _isMaster = _ms.user.email === 'master@demo.local';
       const {data} = await _sb.from('crm_profiles').select('*').order('dept').order('display_name');
       if(data && data.length){ profiles = data; break; }
     }
@@ -13827,7 +13827,7 @@ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().the
 </script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';

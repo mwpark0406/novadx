@@ -1578,7 +1578,7 @@ async function _afterLogin(user) {
   const access = profile?.access||'';
   /* 보안: site_registry 키('intl') 정확 매칭(부분문자열 → 토큰 비교) */
   const _acl = (Array.isArray(access)?access:String(access||'').split(',')).map(function(s){return String(s).trim();});
-  const allowed = _acl.indexOf('intl')>=0||profile?.role==='admin'||user.email==='pmw0406@demo.local';
+  const allowed = _acl.indexOf('intl')>=0||profile?.role==='admin'||user.email==='master@demo.local';
   if(!allowed){
     alert('해외영업 접근 권한이 없습니다. (해외 권한 필요)');
     _wtToCentral(false);   // 권한 없음 → ret 없이(무한루프 방지). 세션은 유지(다른 사이트는 쓸 수 있음)
@@ -1642,7 +1642,7 @@ async function _afterLogin(user) {
 }
 
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["intl"];                 /* 이 사이트 자신의 registry key(들) */
 var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
@@ -1696,7 +1696,7 @@ async function _wtRenderSwitcher(){
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||''))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||''))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -1954,7 +1954,7 @@ function _esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){retur
 var USD_KRW=1380;
 function _krw(v){v=Number(v)||0;var w=v*USD_KRW;return w>=1e8?'₩'+(w/1e8).toFixed(1)+'억':'₩'+Math.round(w/1e4).toLocaleString()+'만';}
 function _docCount(d){var o=d.docs||{};return ['co','ci','pl','ip'].filter(function(k){return o[k];}).length;}
-function _isMasterIntl(){return !!(_currentUser&&(_currentUser.role==='admin'||_currentUser.email==='pmw0406@demo.local'));}
+function _isMasterIntl(){return !!(_currentUser&&(_currentUser.role==='admin'||_currentUser.email==='master@demo.local'));}
 function _canEditIntl(owner){return !owner||owner===_meName||_isMasterIntl();}
 function _norm2(s){return String(s||'').replace(/^[가-힣A-Za-z]+\//,'').replace(/[\s()\[\].,_/-]/g,'').toLowerCase();}
 function _dealerActual(name){var dn=_norm2(name);if(!dn||dn.length<2)return {krw:0,who:''};var sum=0,who='';var I=(typeof INTL!=='undefined')?INTL:null;if(I&&I.countries){Object.keys(I.countries).forEach(function(c){var cd=(I.countries[c].clientData)||{};Object.keys(cd).forEach(function(k){var kn=_norm2(k);if(kn&&kn.length>=2&&(kn.indexOf(dn)>=0||dn.indexOf(kn)>=0)){sum+=Number(cd[k].total)||0;if(!who)who=k;}});});}return {krw:sum,who:who};}
@@ -5377,7 +5377,7 @@ function _mwDone(kind,id){
 </script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';

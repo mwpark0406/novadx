@@ -358,7 +358,7 @@ th,td{padding:6px 9px}
 </style>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';
@@ -1009,7 +1009,7 @@ function doLogin(){
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터는 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -1031,7 +1031,7 @@ async function wtChangePw(){
   alert('비밀번호가 변경되었습니다.');
 }
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["consumables"];           /* 이 사이트 자신의 registry key(들) */
 var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
@@ -1080,7 +1080,7 @@ function enterApp(user){
     var pf=(r&&r.data)||{};
     /* 보안: site_registry 키('consumables') 정확 매칭 — 'daily'(일일보고)와 분리 */
     var _acl = String(pf.access||'').split(',').map(function(s){return s.trim();});
-    var allowed = user.email==='pmw0406@demo.local' || pf.role==='admin' || _acl.indexOf('consumables')>=0;
+    var allowed = user.email==='master@demo.local' || pf.role==='admin' || _acl.indexOf('consumables')>=0;
     if(!allowed){ alert('진단키트 일일매출보고 접근 권한이 없습니다.'); location.replace(CENTRAL); return; }  /* 권한 없음: ret 없이(무한 루프 방지) · signOut 금지(전 사이트 공유 세션 파괴) */
     document.getElementById('login').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');

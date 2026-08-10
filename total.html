@@ -1765,7 +1765,7 @@ async function doLogin(){
     try{
       if(typeof _sb!=='undefined' && _sb && _sb.auth && _sb.auth.getSession){
         _sb.auth.getSession().then(function(r){
-          var s=r&&r.data&&r.data.session; var _noAutoLogout=['pmw0406@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터·megan은 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
+          var s=r&&r.data&&r.data.session; var _noAutoLogout=['master@demo.local','admin@demo.local','manager@demo.local','user@demo.local']; if(s&&s.user&&(_noAutoLogout.indexOf(s.user.email)>=0||/@demo\.local$/i.test(s.user.email||""))){ _arm(); return; } /* 마스터·megan은 자동로그아웃 제외 */ if(s){ _logout(); } else { _arm(); }
         }).catch(function(){ _logout(); });
       } else { _logout(); }
     }catch(e){ _logout(); }
@@ -1797,7 +1797,7 @@ async function goSite(base,extra){
   location.href=u;
 }
 /* ===== 권한 기반 사이트 이동 (site_registry 공통) — WT_SWITCHER ===== */
-var _WT_MASTER='pmw0406@demo.local';
+var _WT_MASTER='master@demo.local';
 var _WT_OWN=["total"];                 /* 이 사이트 자신의 registry key(들) */
 var _WT_NOVADX='https://mwpark0406.github.io/novadx/kor.html';
 var _wtReg=null, _wtItems=[];
@@ -1841,7 +1841,7 @@ document.addEventListener('click',function(e){
 async function afterLogin(user){
   const {data:profile}=await _sb.from('crm_profiles').select('display_name,access,role,position,dept').eq('id',user.id).maybeSingle();
   const access=profile?.access||'';
-  const isMaster=user.email==='pmw0406@demo.local';
+  const isMaster=user.email==='master@demo.local';
   /* 보안: site_registry 키('total') 정확 매칭 — 런처에 안 보이면 URL 직접진입도 차단.
      예전엔 korea+intl 보유자면 통과해(부분문자열 매칭) 권한 없는 계정에 전사 매출이 노출됐다. */
   const _acl=String(access||'').split(',').map(function(s){return s.trim();});
@@ -5162,7 +5162,7 @@ if('serviceWorker' in navigator){ navigator.serviceWorker.getRegistrations().the
 </script>
 <script>/* WT_FORCEPW_V1 — 임시비번 강제변경 (자동주입 스니펫, 개별 수정 금지) */
 (function(){
-var MASTER='pmw0406@demo.local';var shown=false;
+var MASTER='master@demo.local';var shown=false;
 function ov(){if(document.getElementById('wtfpw'))return document.getElementById('wtfpw');
 var d=document.createElement('div');d.id='wtfpw';
 d.style.cssText='position:fixed;inset:0;z-index:2147483647;background:linear-gradient(135deg,#0f172a,#1e2140);display:none;align-items:center;justify-content:center;font-family:inherit';

@@ -3058,7 +3058,7 @@ async function openRegionDetail(rg,yr,f,t){
   var preV=Object.values(preMap).reduce(function(a,b){return a+b;},0);
   var y=pct(curV,preV);
   // 목표 (sales_targets item=지역·법인명, 해당 기간 합)
-  if(!window._SALEST_I){ try{ var rr=await _sb.from('sales_targets').select('item,month,amount'); window._SALEST_I=(rr&&rr.data)||[]; }catch(e){ window._SALEST_I=[]; } }
+  if(!window._SALEST_I){ try{ var rr=await _sb.from('cons_cache').select('data').eq('key','sales_targets').maybeSingle(); window._SALEST_I=(rr&&rr.data&&rr.data.data&&rr.data.data.rows)||[]; }catch(e){ window._SALEST_I=[]; } }
   var tgt=window._SALEST_I.filter(function(x){return x.item===rg&&x.month>=f&&x.month<=t;}).reduce(function(a,x){return a+(+x.amount||0);},0);
   var ach=tgt>0?curV/tgt*100:null;
   // 거래처 표 데이터 (당기·전년·YoY)

@@ -938,6 +938,33 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 .lc-foot2 .lb{color:#8394ab}
 .lc-go{color:#7fb0e6}
 
+/* ═══ 낮은 화면(노트북)은 카드·간격 축소 → 세로 스크롤 없이 한 화면 ═══ */
+@media(max-height:840px){
+  .lc-head{margin-bottom:11px}
+  .lc-head-top{padding:11px 20px}
+  .lc-meta-i{padding-top:7px;padding-bottom:7px}
+  .lc-grid{gap:10px}
+  .lc-grp-t{margin-bottom:6px}
+  .lc-card{padding:11px 15px 10px}
+  .lc-ico{width:34px;height:34px;font-size:16px}
+  .lc-ico i{font-size:16px}
+  .lc-txt{margin-top:8px}
+  .lc-foot2{margin-top:8px;padding-top:7px}
+}
+@media(max-height:730px){
+  .lc-head{margin-bottom:8px}
+  .lc-head-top{padding:9px 20px}
+  .lc-meta-i{padding-top:6px;padding-bottom:6px}
+  .lc-grid{gap:8px}
+  .lc-card{padding:9px 13px 8px}
+  .lc-ico{width:30px;height:30px;font-size:14px}
+  .lc-ico i{font-size:14px}
+  .lc-title{font-size:14px}
+  .lc-body{-webkit-line-clamp:1;margin-top:3px}
+  .lc-txt{margin-top:6px}
+  .lc-foot2{margin-top:6px;padding-top:6px}
+}
+
 /* 창이 낮으면 중앙정렬 대신 상단정렬(오버플로 시 윗줄 잘림 방지) */
 @media(max-height:700px){#launcher-main{justify-content:flex-start}}
 /* 화면이 높으면 카드·헤더를 조금 키워 여백을 자연스럽게 흡수 */

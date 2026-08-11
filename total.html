@@ -2444,6 +2444,14 @@ function renderOverview(){
   const _rc=Object.values(INTL.prods_cons||{}).reduce((a,x)=>a+(+x||0),0), _rd=Object.values(INTL.prods_dev||{}).reduce((a,x)=>a+(+x||0),0), _rs=_rc+_rd;
   const _intlCons=_rs>0?intlI*_rc/_rs:0, _intlDev=_rs>0?intlI*_rd/_rs:intlI;
   const devTot=(domDevC+sumMo(pend.devMonthly,f,t))+_intlDev, consTot=(domConsC+sumMo(pend.consMonthly,f,t))+_intlCons, _cd=devTot+consTot||1;
+  // 장비 대수(국내 월별수량 기간합 + 해외 대수 기간환산) · 전년 장비/소모품(2025 동기)
+  let _devQty=0; for(const _p in (DEVICE.prodMoQty2026||{})) _devQty+=sumMo(DEVICE.prodMoQty2026[_p],f,t);
+  for(const _p in (INTL.prodMoQty||{})){ const _yq=Number(INTL.prodMoQty[_p])||0; _devQty+=_yq*_scale((INTL.prodMo||{})[_p],f,t); }
+  const _i25=INTL.data2025||{}, _rd25=Object.values(_i25.prods_dev||{}).reduce((a,x)=>a+(+x||0),0), _rc25=Object.values(_i25.prods_cons||{}).reduce((a,x)=>a+(+x||0),0), _rs25=(_rd25+_rc25)||1;
+  const _intlP=sumMo(_i25.monthly,f,t);
+  const _devPrev=sumMo(DEVICE.monthly2025,f,t)+_intlP*_rd25/_rs25;
+  const _consPrev=sumMo(CONS.monthly2025,f,t)+_intlP*_rc25/_rs25;
+  let _consQty=0; for(const _p in (CONS.prodMoQty2026||{})) _consQty+=sumMo(CONS.prodMoQty2026[_p],f,t);
   // KPI 카드 줄은 스코어보드와 중복이라 제거 — 기타 포함 안내문만 유지 (장비vs소모품은 스코어보드 5번째 셀로 이동)
   const _etcNote = etcC>0?('<div class="col-12"><div style="font-size:11px;color:#94a3b8;margin-top:2px"><i class="bi bi-info-circle me-1"></i>전사 합계엔 <b style="color:#64748b">기타(의료기기·서지컬·B2C·고객만족) '+fmtW(etcC)+'</b> 포함(회계 전체 정합) · 국내는 한국영업(소모품·제품)만 표시</div></div>'):'';
   document.getElementById('ov-kpi').innerHTML=_etcNote;
@@ -2494,7 +2502,7 @@ function renderOverview(){
     }
   }catch(e){}
   // 스코어보드 히어로 + 인사이트 (이미 계산된 로컬만 전달)
-  try{ _renderScoreboard(f,t,{totalC,totalI,totalPrev,allPend,domC,domI,domPrev,intl,intlPend,intlI,intlPrev,etcC,devTot,consTot}, _prevBand); }catch(e){ console.warn('scoreboard',e); }
+  try{ _renderScoreboard(f,t,{totalC,totalI,totalPrev,allPend,domC,domI,domPrev,intl,intlPend,intlI,intlPrev,etcC,devTot,consTot,devQty:_devQty,consQty:_consQty,devPrev:_devPrev,consPrev:_consPrev}, _prevBand); }catch(e){ console.warn('scoreboard',e); }
 }
 function renderChannelMix(f,t){
   const pend=_pendingAgg(2026);

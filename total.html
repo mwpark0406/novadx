@@ -1482,6 +1482,7 @@ td.wt-empty{padding:26px 12px}
       <div class="user-av" id="u-av">?</div>
       <div><div class="user-nm" id="u-nm">-</div><div class="user-em" id="u-em">-</div></div>
     </div>
+    <button class="btn btn-sm w-100 mb-2" style="background:#eef4ff;color:#1d4ed8;border:1px solid #c7dbff;font-size:12px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="_tgOpen()"><i class="bi bi-search"></i>통합 검색<kbd style="font-size:9px;background:#fff;border:1px solid #c7dbff;border-radius:4px;padding:0 4px;margin-left:2px">Ctrl K</kbd></button>
     <button class="btn btn-sm w-100 mb-2" style="background:#f8fafc;color:#475569;border:1px solid #d5dde8;font-size:12px" onclick="wtChangePw()"><i class="bi bi-key me-1"></i>비밀번호 변경</button>
     <button class="btn btn-sm w-100 mb-2" style="background:#f8fafc;color:#475569;border:1px solid #d5dde8;font-size:12px" onclick="doLogout()"><i class="bi bi-box-arrow-right me-1"></i>로그아웃</button>
     <div style="position:relative">
@@ -5248,5 +5249,62 @@ function chk(){et().then(function(e){if(e==null||e==='')return;if(base===null){b
 document.addEventListener('visibilitychange',function(){if(!document.hidden)chk();});
 setInterval(chk,5*60*1000);chk();
 })();</script>
+
+<!-- 전역 통합검색 (Ctrl+K) -->
+<div id="tg-ov" style="display:none;position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.45)" onclick="if(event.target===this)_tgClose()">
+  <div style="max-width:640px;margin:8vh auto 0;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #eef2f7">
+      <i class="bi bi-search" style="color:#94a3b8;font-size:16px"></i>
+      <input id="tg-in" placeholder="제품 · 거래처 · 담당자 · 국가 검색…" autocomplete="off" style="flex:1;border:0;outline:none;font-size:15px;color:#0f172a;background:transparent">
+      <kbd style="font-size:10px;color:#94a3b8;background:#f1f5f9;border-radius:5px;padding:2px 6px">ESC</kbd>
+    </div>
+    <div id="tg-res" style="max-height:60vh;overflow:auto;padding:6px"></div>
+    <div style="padding:8px 16px;border-top:1px solid #f1f5f9;font-size:10.5px;color:#94a3b8;display:flex;gap:14px"><span><kbd style="background:#f1f5f9;border-radius:4px;padding:1px 5px">↑↓</kbd> 이동</span><span><kbd style="background:#f1f5f9;border-radius:4px;padding:1px 5px">Enter</kbd> 열기</span><span style="margin-left:auto">전사 종합 검색</span></div>
+  </div>
+</div>
+<script>
+(function(){
+  var _idx=[], _sel=0, _rows=[];
+  function _n(s){return String(s==null?'':s).toLowerCase().replace(/\s+/g,'');}
+  function _build(){
+    var rows=[];
+    try{ var seen={}; [typeof CONS!=='undefined'?CONS:null,typeof DEVICE!=='undefined'?DEVICE:null].forEach(function(S){ if(S&&S.hospitals) Object.keys(S.hospitals).forEach(function(nm){ if(nm&&!seen[nm]){ seen[nm]=1; var v=(Number((CONS.hospitals&&CONS.hospitals[nm]||{}).y2026)||0)+(Number((DEVICE.hospitals&&DEVICE.hospitals[nm]||{}).y2026)||0); rows.push({t:'거래처',n:nm,sub:v?fmtW(v):'',c:'#2563eb',ic:'bi-shop',act:'tgCust',arg:nm}); } }); }); }catch(e){}
+    try{ if(typeof INTL!=='undefined') Object.values(INTL.countries||{}).forEach(function(c){ Object.keys(c.clientData||{}).forEach(function(nm){ if(nm){ rows.push({t:'해외 거래처',n:nm,sub:fmtW(Number((c.clientData[nm]||{}).total)||0),c:'#0d9488',ic:'bi-globe2',act:'tgCust',arg:nm}); } }); }); }catch(e){}
+    try{ var pm=(typeof _productMap==='function')?_productMap(1,12,null):{}; Object.keys(pm).forEach(function(nm){ var o=pm[nm]; rows.push({t:'제품',n:nm,sub:fmtW((o.dom||0)+(o.intl||0))+' · '+(o.cat||''),c:'#7c3aed',ic:'bi-box-seam',act:'tgProd',arg:nm}); }); }catch(e){}
+    try{ var rp={}; [typeof DEVICE!=='undefined'?DEVICE:null].forEach(function(S){ if(S&&S.reps) Object.keys(S.reps).forEach(function(n){ rp[n]=1; }); }); if(typeof INTL!=='undefined'&&INTL.reps) Object.keys(INTL.reps).forEach(function(n){ rp[n]=1; }); Object.keys(rp).forEach(function(n){ rows.push({t:'담당자',n:n,sub:'',c:'#d97706',ic:'bi-person',act:'tgRep',arg:n}); }); }catch(e){}
+    try{ if(typeof INTL!=='undefined') Object.keys(INTL.countries||{}).forEach(function(cc){ var ko=(typeof ccKo==='function')?ccKo(cc):cc; rows.push({t:'국가',n:ko,sub:'해외영업',c:'#0891b2',ic:'bi-flag',act:'tgGeo',arg:cc}); }); }catch(e){}
+    _idx=rows;
+  }
+  window.tgProd=function(nm){ _tgClose(); try{ openProdInfo(nm); }catch(e){} };
+  window.tgCust=function(nm){ _tgClose(); try{ qCustOpen(nm); }catch(e){} };
+  window.tgRep=function(){ _tgClose(); try{ showPage('leaderboard',document.getElementById('nav-leaderboard')); }catch(e){} };
+  window.tgGeo=function(){ _tgClose(); try{ qState.tab='geo'; showPage('query',document.getElementById('nav-query')); }catch(e){} };
+  function _render(q){
+    var res=document.getElementById('tg-res'); if(!res)return; var nq=_n(q);
+    var hits = nq ? _idx.filter(function(r){return _n(r.n).indexOf(nq)>=0||_n(r.sub).indexOf(nq)>=0;}).slice(0,50) : _idx.slice(0,12);
+    _rows=hits; _sel=0;
+    if(!hits.length){ res.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:13px">결과 없음</div>'; return; }
+    res.innerHTML=hits.map(function(r,i){ return '<div class="tg-row" data-i="'+i+'" onmouseover="_tgH('+i+')" onclick="_tgGo('+i+')" style="display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer">'
+      +'<span style="width:28px;height:28px;border-radius:8px;background:'+r.c+'18;color:'+r.c+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi '+r.ic+'"></i></span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden"><span style="font-size:13.5px;font-weight:600;color:#0f172a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.n+'</span>'+(r.sub?'<span style="font-size:11px;color:#94a3b8">'+r.sub+'</span>':'')+'</span>'
+      +'<span style="font-size:10.5px;font-weight:700;color:'+r.c+';flex-shrink:0">'+r.t+'</span></div>'; }).join('');
+    _tgHi();
+  }
+  window._tgH=function(i){ _sel=i; _tgHi(); };
+  function _tgHi(){ var rs=document.querySelectorAll('#tg-res .tg-row'); for(var i=0;i<rs.length;i++) rs[i].style.background=(i===_sel)?'#f1f5f9':''; if(rs[_sel])rs[_sel].scrollIntoView({block:'nearest'}); }
+  window._tgGo=function(i){ var r=_rows[i]; if(!r)return; try{ (window[r.act]||function(){})(r.arg); }catch(e){} };
+  window._tgOpen=function(){ _build(); var ov=document.getElementById('tg-ov'); if(!ov)return; ov.style.display='block'; var inp=document.getElementById('tg-in'); if(inp)inp.value=''; _render(''); setTimeout(function(){ if(inp)inp.focus(); },30); };
+  window._tgClose=function(){ var ov=document.getElementById('tg-ov'); if(ov)ov.style.display='none'; };
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){ var lg=document.getElementById('login-screen'); if(lg&&getComputedStyle(lg).display!=='none')return; e.preventDefault(); var ov=document.getElementById('tg-ov'); if(ov&&ov.style.display==='block')_tgClose(); else _tgOpen(); return; }
+    var ov=document.getElementById('tg-ov'); if(!ov||ov.style.display!=='block')return;
+    if(e.key==='Escape'){ e.preventDefault(); _tgClose(); }
+    else if(e.key==='ArrowDown'){ e.preventDefault(); _sel=Math.min(_rows.length-1,_sel+1); _tgHi(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); _sel=Math.max(0,_sel-1); _tgHi(); }
+    else if(e.key==='Enter'){ e.preventDefault(); _tgGo(_sel); }
+  });
+  document.addEventListener('input',function(e){ if(e.target&&e.target.id==='tg-in') _render(e.target.value); });
+})();
+</script>
 </body>
 </html>

@@ -9899,8 +9899,11 @@ function _custRow(h,rank){
     '<td class="text-end">'+_yoyBadge(h)+'</td>'+
     '<td class="text-center">'+_gpill(h.grade)+'</td></tr>';
 }
+// 긴 목록 상한 — 한 번에 다 그리면 페이지가 2만px 를 넘어간다. 상위만 그리고 '더 보기'로 확장.
+let _custLimit=100,_custMore=0;
 function _custSalesView(list){
-  const rows=list.filter(h=>h.y2026>0).sort((a,b)=>b.y2026-a.y2026);
+  const _r0=list.filter(h=>h.y2026>0).sort((a,b)=>b.y2026-a.y2026);
+  const rows=_r0.slice(0,_custLimit); _custMore+=_r0.length-rows.length;
   if(!rows.length) return '<div class="text-center text-muted py-4">데이터 없음</div>';
   return '<div class="card"><div class="card-body p-0"><table class="table table-hover mb-0"><thead class="table-light"><tr><th class="text-center" style="width:44px">#</th><th>병원명</th><th>지역</th><th>담당</th><th>주력제품</th><th class="text-end">2026 매출</th><th class="text-end">전년비</th><th class="text-center">등급</th></tr></thead><tbody>'+rows.map((h,i)=>_custRow(h,i+1)).join('')+'</tbody></table></div></div>';
 }
@@ -9910,21 +9913,26 @@ function _custRegionView(list){
   const order=Object.keys(bySido).sort((a,b)=>{ if(a==='미분류')return 1; if(b==='미분류')return -1; return bySido[b].reduce((s,h)=>s+h.y2026,0)-bySido[a].reduce((s,h)=>s+h.y2026,0); });
   if(!order.length) return '<div class="text-center text-muted py-4">데이터 없음</div>';
   return order.map(function(sido){
-    const hs=bySido[sido].sort((a,b)=>b.y2026-a.y2026); const tot=hs.reduce((s,h)=>s+h.y2026,0);
-    return '<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;background:'+(sido==='미분류'?'#fffbeb':'#f8fafc')+';border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px;display:flex;justify-content:space-between"><span><i class="bi '+(sido==='미분류'?'bi-question-circle':'bi-geo-alt-fill')+' me-1" style="color:'+(sido==='미분류'?'#d97706':'#059669')+'"></i>'+_custEsc(sido)+' <span style="color:#64748b;font-weight:400">'+hs.length+'개</span></span><span style="color:#374151">'+_custFmt(tot)+'</span></div><table class="table table-hover mb-0"><tbody>'+hs.map(h=>_custRow(h,null)).join('')+'</tbody></table></div></div>';
+    const _h0=bySido[sido].sort((a,b)=>b.y2026-a.y2026); const tot=_h0.reduce((s,h)=>s+h.y2026,0);
+    const hs=_h0.slice(0,Math.max(12,Math.floor(_custLimit/8))); _custMore+=_h0.length-hs.length;
+    return '<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;background:'+(sido==='미분류'?'#fffbeb':'#f8fafc')+';border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px;display:flex;justify-content:space-between"><span><i class="bi '+(sido==='미분류'?'bi-question-circle':'bi-geo-alt-fill')+' me-1" style="color:'+(sido==='미분류'?'#d97706':'#059669')+'"></i>'+_custEsc(sido)+' <span style="color:#64748b;font-weight:400">'+_h0.length+'개</span></span><span style="color:#374151">'+_custFmt(tot)+'</span></div><table class="table table-hover mb-0"><tbody>'+hs.map(h=>_custRow(h,null)).join('')+'</tbody></table></div></div>';
   }).join('');
 }
 function _custGradeView(list){
   const G=[{g:'S',d:'3천만↑'},{g:'A',d:'1천만~3천만'},{g:'B',d:'300만~1천만'},{g:'C',d:'50만~300만'},{g:'·',d:'50만 미만'}];
   const act=list.filter(h=>h.y2026>0);
   return '<div class="alert alert-light border" style="font-size:12px;padding:8px 12px"><i class="bi bi-info-circle me-1"></i>등급 = <b>2026년 누적매출(소모품+장비) 규모</b></div>'+
-  G.map(function(gr){ const hs=act.filter(h=>h.grade===gr.g).sort((a,b)=>b.y2026-a.y2026); if(!hs.length) return '';
-    return '<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px;display:flex;justify-content:space-between"><span>'+_gpill(gr.g)+' <span style="color:#64748b;font-weight:400;font-size:12px">'+gr.d+' · '+hs.length+'개</span></span><span style="color:#374151">'+_custFmt(hs.reduce((s,h)=>s+h.y2026,0))+'</span></div><table class="table table-hover mb-0"><tbody>'+hs.map(h=>_custRow(h,null)).join('')+'</tbody></table></div></div>'; }).join('');
+  G.map(function(gr){ const _g0=act.filter(h=>h.grade===gr.g).sort((a,b)=>b.y2026-a.y2026); if(!_g0.length) return '';
+    const hs=_g0.slice(0,Math.max(20,Math.floor(_custLimit/5))); _custMore+=_g0.length-hs.length;
+    return '<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px;display:flex;justify-content:space-between"><span>'+_gpill(gr.g)+' <span style="color:#64748b;font-weight:400;font-size:12px">'+gr.d+' · '+_g0.length+'개</span></span><span style="color:#374151">'+_custFmt(hs.reduce((s,h)=>s+h.y2026,0))+'</span></div><table class="table table-hover mb-0"><tbody>'+hs.map(h=>_custRow(h,null)).join('')+'</tbody></table></div></div>'; }).join('');
 }
 function _custNewView(list){
-  const nw=list.filter(h=>h.y2026>0&&!h.y2025).sort((a,b)=>b.y2026-a.y2026);
-  const lost=list.filter(h=>!h.y2026&&h.y2025>0).sort((a,b)=>b.y2025-a.y2025);
-  const sec=(title,ic,col,hs,vk)=>'<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px"><i class="bi '+ic+' me-1" style="color:'+col+'"></i>'+title+' <span style="color:#64748b;font-weight:400">'+hs.length+'개</span></div>'+(hs.length?'<table class="table table-hover mb-0"><tbody>'+hs.map(h=>'<tr style="cursor:pointer" onclick="openHospDetail(\''+_custEsc(h.name).replace(/\x27/g,"\\x27")+'\')"><td><strong>'+_custEsc(h.name)+'</strong></td><td style="font-size:12px;color:#6b7280">'+(h.sido==='미분류'?'미분류':_custEsc((h.sido+' '+h.gugun).trim()))+'</td><td style="font-size:12px">'+_custEsc(h.sales)+'</td><td class="text-end" style="font-weight:700">'+_custFmt(h[vk])+'</td></tr>').join('')+'</tbody></table>':'<div class="text-muted text-center py-3" style="font-size:12px">없음</div>')+'</div></div>';
+  const _cap2=Math.max(30,Math.floor(_custLimit/3));
+  const _n0=list.filter(h=>h.y2026>0&&!h.y2025).sort((a,b)=>b.y2026-a.y2026);
+  const _l0=list.filter(h=>!h.y2026&&h.y2025>0).sort((a,b)=>b.y2025-a.y2025);
+  const nw=_n0.slice(0,_cap2), lost=_l0.slice(0,_cap2);
+  _custMore+=(_n0.length-nw.length)+(_l0.length-lost.length);
+  const sec=(title,ic,col,hs,vk)=>'<div class="card mb-2"><div class="card-body p-0"><div style="padding:9px 14px;border-bottom:1px solid #eef2f7;font-weight:700;font-size:13px"><i class="bi '+ic+' me-1" style="color:'+col+'"></i>'+title+' <span style="color:#64748b;font-weight:400">'+(hs===nw?_n0.length:_l0.length)+'개</span></div>'+(hs.length?'<table class="table table-hover mb-0"><tbody>'+hs.map(h=>'<tr style="cursor:pointer" onclick="openHospDetail(\''+_custEsc(h.name).replace(/\x27/g,"\\x27")+'\')"><td><strong>'+_custEsc(h.name)+'</strong></td><td style="font-size:12px;color:#6b7280">'+(h.sido==='미분류'?'미분류':_custEsc((h.sido+' '+h.gugun).trim()))+'</td><td style="font-size:12px">'+_custEsc(h.sales)+'</td><td class="text-end" style="font-weight:700">'+_custFmt(h[vk])+'</td></tr>').join('')+'</tbody></table>':'<div class="text-muted text-center py-3" style="font-size:12px">없음</div>')+'</div></div>';
   return sec('신규 거래처 (2026 신규 진입)','bi-stars','#7c3aed',nw,'y2026')+sec('이탈 거래처 (2025 거래, 2026 없음)','bi-arrow-down-circle','#dc2626',lost,'y2025');
 }
 function renderCustomers(){
@@ -9949,10 +9957,12 @@ function renderCustomers(){
   document.getElementById('cust-view-cards').innerHTML=cards.map(function(c){var on=_custView===c.v;return '<div class="col-6 col-md-3"><div onclick="setCustView(\''+c.v+'\')" class="cust-vcard'+(on?' on':'')+'"><div style="display:flex;align-items:center;gap:8px"><i class="bi '+c.ic+'"></i><span class="vl">'+c.lab+'</span></div><div class="vs">'+c.sub+'</div></div></div>';}).join('');
   document.getElementById('cust-count').textContent=f.filter(h=>h.y2026>0||h.y2025>0).length+'개 거래처'+(salesF?' · 담당 '+_custEsc(salesF==='__none__'?'미배정':salesF):'');
   const body=document.getElementById('cust-body');
+  _custMore=0;
   if(_custView==='sales') body.innerHTML=_custSalesView(f);
   else if(_custView==='region') body.innerHTML=_custRegionView(f);
   else if(_custView==='grade') body.innerHTML=_custGradeView(f);
   else body.innerHTML=_custNewView(f);
+  if(_custMore>0) body.innerHTML+='<div class="text-center" style="padding:7px 0 2px"><button class="btn btn-sm btn-outline-secondary" style="font-size:12px" onclick="_custLimit+=400;renderCustomers()"><i class="bi bi-chevron-down me-1"></i>더 보기 · 숨김 '+_custMore.toLocaleString()+'개 <span style="color:#94a3b8">(검색·담당 필터로 바로 찾을 수도 있습니다)</span></button></div>';
 }
 // "내 거래처" — 로그인한 담당영업 이름이 포함된 옵션 자동 선택
 function _custMine(){

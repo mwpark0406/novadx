@@ -13413,7 +13413,7 @@ document.addEventListener('click', function(e) {
   if(dd && btn && !btn.contains(e.target)) dd.style.display = 'none';
 });
 
-function _wtAppShell(){ try{ var ls=document.getElementById('launcher-screen'); if(ls)ls.style.display='none'; var la=document.getElementById('launcher-admin'); if(la)la.style.display='none'; var lm=document.getElementById('launcher-main'); if(lm)lm.style.display='flex'; var mc=document.getElementById('main-content'); if(mc)mc.style.display='block'; }catch(e){} }
+function _wtAppShell(){ try{ sessionStorage.setItem('wt_app','korea');   /* 한국 앱 셸 진입 = wt_app 복원(뒤로가기로 관리자→앱 복귀 시 stale 'admin' 잔류 방지) */ var ls=document.getElementById('launcher-screen'); if(ls)ls.style.display='none'; var la=document.getElementById('launcher-admin'); if(la)la.style.display='none'; var lm=document.getElementById('launcher-main'); if(lm)lm.style.display='flex'; var mc=document.getElementById('main-content'); if(mc)mc.style.display='block'; }catch(e){} }
 window.addEventListener('popstate', function(e) {
   // 0) 열려있는 오버레이(모달/사이드 드로어)가 있으면 오버레이만 닫고, 소모된 엔트리를 복구 — 모바일 '뒤로가기=닫기'
   const _openModal = document.querySelector('.modal.show');

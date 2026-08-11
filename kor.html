@@ -101,8 +101,8 @@ function _yFit(cfg){
   return cfg;
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{--blue:#2563eb;--blue-light:#eff6ff;--sidebar-bg:#f1f5f9;--sidebar-hover:#eef2f7;--sidebar-active:#eaf1fd;--text:#111827;--text-2:#6b7280;--border:#e5e7eb;--bg:#f3f4f6;--white:#ffffff;--green:#16a34a;--orange:#ea580c;--purple:#7c3aed;--red:#dc2626}
@@ -3580,16 +3580,7 @@ async function init() {
     return;
   }
   // 소모품·제품 데이터 복원 (버전 확인 후 캐시 우선 — 대역폭 절약)
-  // 하드코딩 데이터가 더 최신이면 캐시 데이터 무시
-  await Promise.all([
-    _loadConsCacheCached('main', CONS),
-    _loadConsCacheCached('device', DEVICE),
-    _loadSalesTeam(),
-  ]);
-  try{ _normProds(CONS,true); _normProds(DEVICE,false); }catch(e){ console.warn('제품명 정규화 실패', e); }
-  purgeForeignHospitals();
-  _stripSalesPrefixes();
-  // 견적서 공개 링크 처리 (?q=견적번호)
+  // 견적서 공개 링크 처리 (?q=견적번호) — 데이터 로드·로그인 전에 처리(공개 링크는 비로그인 허용)
   const qParam = new URLSearchParams(location.search).get('q');
   if(qParam) {
     document.body.innerHTML = '<div style="padding:40px;max-width:900px;margin:auto;font-family:Noto Sans KR,sans-serif"><div id="pub-loading" class="text-center text-muted py-5">견적서 불러오는 중...</div><div id="pub-content"></div></div>';
@@ -3611,6 +3602,15 @@ async function init() {
     _hideLoading();
     return;
   }
+  // 로그인 사용자만 무거운 데이터 로드 — 비로그인 방문자는 위에서 즉시 로그인 화면 반환(초기 로딩 단축)
+  await Promise.all([
+    _loadConsCacheCached('main', CONS),
+    _loadConsCacheCached('device', DEVICE),
+    _loadSalesTeam(),
+  ]);
+  try{ _normProds(CONS,true); _normProds(DEVICE,false); }catch(e){ console.warn('제품명 정규화 실패', e); }
+  purgeForeignHospitals();
+  _stripSalesPrefixes();
   document.getElementById('login-screen').style.display='none';
   _applyLoginUI(session.user);
   await _showLauncherOrApp(session.user);

@@ -2379,7 +2379,11 @@ function openProdModal(prodName, cat){
   const _ctAgg={};
   Object.entries(cur.countries||{}).forEach(([ctName,obj])=>{ const cd=(obj&&obj.clientData)||{};
     Object.keys(cd).forEach(nm=>{ ((cd[nm]&&cd[nm].txns)||[]).forEach(r=>{ if(r&&r[1]===prodName){ const m=+String(r[0]).slice(5,7); if(m>=f&&m<=t){ const o=_ctAgg[ctName]||(_ctAgg[ctName]={v:0,q:0,tx:[]}); o.v+=+r[3]||0; o.q+=+r[2]||0; o.tx.push([r[0],nm,+r[2]||0,+r[3]||0]); } } }); }); });
-  const ctArr = Object.keys(_ctAgg).map(n=>({n:n,v:_ctAgg[n].v,q:_ctAgg[n].q,tx:_ctAgg[n].tx})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  // 전년 동일 기간 국가별 — YoY 를 화면에 바로 보여주기 위함
+  const _ctAggP={};
+  if(pre) Object.entries(pre.countries||{}).forEach(([ctName,obj])=>{ const cd=(obj&&obj.clientData)||{};
+    Object.keys(cd).forEach(nm=>{ ((cd[nm]&&cd[nm].txns)||[]).forEach(r=>{ if(r&&r[1]===prodName){ const m=+String(r[0]).slice(5,7); if(m>=f&&m<=t){ _ctAggP[ctName]=(_ctAggP[ctName]||0)+(+r[3]||0); } } }); }); });
+  const ctArr = Object.keys(_ctAgg).map(n=>({n:n,v:_ctAgg[n].v,q:_ctAgg[n].q,tx:_ctAgg[n].tx,pv:_ctAggP[n]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 
   const tot26 = ctArr.reduce((s,x)=>s+x.v,0);
   // Get product monthly data from prodMo
@@ -2420,8 +2424,10 @@ function openProdModal(prodName, cat){
       <div onclick="var d=document.getElementById('pmct-${i}');var op=d.style.display==='none';d.style.display=op?'block':'none';this.querySelector('.pmct-cv').style.transform=op?'rotate(90deg)':''" style="display:flex;flex-direction:row;align-items:center;gap:8px;padding:6px 2px;cursor:pointer" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
         <i class="bi bi-chevron-right pmct-cv" style="font-size:9px;color:#cbd5e1;transition:transform .15s"></i>
         <span style="font-size:11px;color:#9ca3af;width:16px;text-align:right">${i+1}</span>
-        <span style="flex:1;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(x.n)}</span>
-        <span style="font-size:11px;color:#475569;width:56px;text-align:right">${x.q.toLocaleString()}대</span>
+        <span style="flex:1;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ccFI(x.n)} ${_esc(ccKo(x.n))}</span>
+        <span style="font-size:11px;color:#475569;width:52px;text-align:right">${x.q.toLocaleString()}대</span>
+        <span style="font-size:11px;color:#94a3b8;width:60px;text-align:right" title="전년 동기">${x.pv?fmtW(x.pv):'-'}</span>
+        <span style="font-size:11px;font-weight:700;width:52px;text-align:right;color:${(x.pv>0?(x.v>=x.pv?'#16a34a':'#dc2626'):'#7c3aed')}">${x.pv>0?((x.v>=x.pv?'▲':'▼')+Math.abs((x.v/x.pv-1)*100).toFixed(0)+'%'):'신규'}</span>
         <span style="font-size:12px;font-weight:700;color:${col};width:82px;text-align:right">${fmtW(x.v)}</span>
         <span style="display:inline-block;width:56px;height:5px;background:#f3f4f6;border-radius:3px;overflow:hidden"><span style="display:block;width:${(x.v/maxV*100).toFixed(1)}%;height:100%;background:${col}"></span></span>
       </div>
@@ -3039,23 +3045,67 @@ function _renderRegionTable(yr,f,t){
 }
 // 종합 지역·법인 분류: 종속법인(노바진단 USA 등)만 해당 법인으로 분리, 그 외 미국 거래처는 미주 유지
 function _regOvr(c,nm){ if(nm&&typeof _isCorp==='function'&&_isCorp(nm)){ if(c==='미국'||c==='미국법인')return '미국법인'; if(c==='태국'||c==='인도법인')return '인도법인'; if(c==='일본'||c==='중국법인')return '중국법인'; } return _regOf(c,nm); }
-function openRegionDetail(rg,yr,f,t){
-  var cur=yr===2026?INTL:(INTL.data2025||{});
-  var rows=[];  // [거래처(국가), 금액] — 음수(반품·조정) 포함
-  Object.entries(cur.countries||{}).forEach(function(e){ var c=e[0],obj=e[1]; var cd=obj.clientData||{}; var names=Object.keys(cd);
-    if(names.length){ names.forEach(function(nm){ if(_regOvr(c,nm)===rg){ var v=ytd((cd[nm]&&cd[nm].m)||{},f,t); if(v)rows.push([nm+' ('+c+')',v]); } }); }
-    else if(_regOvr(c,null)===rg){ var v=ytd(obj.m||{},f,t); if(v)rows.push([c+' (전체)',v]); } });
-  rows.sort(function(a,b){return Math.abs(b[1])-Math.abs(a[1]);});
-  var mx=rows.reduce(function(m,r){return Math.max(m,Math.abs(r[1]));},1), sum=rows.reduce(function(s,r){return s+r[1];},0);
-  var pos=rows.filter(function(r){return r[1]>0;}).reduce(function(s,r){return s+r[1];},0);
-  var neg=rows.filter(function(r){return r[1]<0;}).reduce(function(s,r){return s+r[1];},0);
+async function openRegionDetail(rg,yr,f,t){
+  // 분석 팝업 — 나열이 아니라 판단 재료: 당기·전년·YoY·목표비 + 월 추이 + 거래처 표
+  var cur=yr===2026?INTL:(INTL.data2025||{}), pre=yr===2026?(INTL.data2025||{}):null;
+  var curMap={}, preMap={}, m26=Array(13).fill(0), m25=Array(13).fill(0);
+  function acc2(src,map,mArr){ Object.entries((src&&src.countries)||{}).forEach(function(e){ var c=e[0],obj=e[1],cd=obj.clientData||{},names=Object.keys(cd);
+    function pick(nm,mo){ if(_regOvr(c,nm)!==rg)return; var k2=(nm||'(전체)')+'|'+c; map[k2]=(map[k2]||0)+ytd(mo||{},f,t); for(var m=1;m<=12;m++)mArr[m]+=(+(mo||{})[m]||0); }
+    if(names.length) names.forEach(function(nm){ pick(nm,(cd[nm]||{}).m); });
+    else pick(null,obj.m); }); }
+  acc2(cur,curMap,m26); if(pre)acc2(pre,preMap,m25);
+  var curV=Object.values(curMap).reduce(function(a,b){return a+b;},0);
+  var preV=Object.values(preMap).reduce(function(a,b){return a+b;},0);
+  var y=pct(curV,preV);
+  // 목표 (sales_targets item=지역·법인명, 해당 기간 합)
+  if(!window._SALEST_I){ try{ var rr=await _sb.from('sales_targets').select('item,month,amount'); window._SALEST_I=(rr&&rr.data)||[]; }catch(e){ window._SALEST_I=[]; } }
+  var tgt=window._SALEST_I.filter(function(x){return x.item===rg&&x.month>=f&&x.month<=t;}).reduce(function(a,x){return a+(+x.amount||0);},0);
+  var ach=tgt>0?curV/tgt*100:null;
+  // 거래처 표 데이터 (당기·전년·YoY)
+  var rows=Object.keys(curMap).map(function(k2){ var nm=k2.split('|')[0], c=k2.split('|')[1];
+    return {nm:nm,c:c,v:curMap[k2]||0,pv:preMap[k2]||0}; });
+  Object.keys(preMap).forEach(function(k2){ if(!(k2 in curMap)){ var nm=k2.split('|')[0], c=k2.split('|')[1]; rows.push({nm:nm,c:c,v:0,pv:preMap[k2]}); } });
+  rows.sort(function(a,b){return Math.abs(b.v)-Math.abs(a.v);});
+  var neg=rows.filter(function(r){return r.v<0;}).reduce(function(s,r){return s+r.v;},0);
   var isEtc=/기타|미분류/.test(rg);
-  document.getElementById('ovm-title').textContent=rg+' 상세 ('+f+'~'+t+'월)';
-  var note=isEtc?'<div style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5">특정 해외 지역으로 귀속하기 어려운 <b>조정·반품충당·국내처리 매출</b>입니다. 아래 음수 항목은 반품/충당(매출 차감)이라 합계가 마이너스가 될 수 있습니다.</div>':'';
-  var head='<div style="font-size:12px;color:#64748b;margin-bottom:10px">순합계 <b style="color:'+(sum>=0?'#0f172a':'#dc2626')+'">'+fmtW(sum)+'</b> · '+rows.length+'개 항목'+
-    (neg<0?' <span style="color:#94a3b8">(판매 '+fmtW(pos)+' − 반품·조정 '+fmtW(Math.abs(neg))+')</span>':'')+'</div>';
-  var bars=rows.slice(0,20).map(function(r){ var v=r[1],neg2=v<0; return '<div style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-bottom:5px;font-size:12px"><span style="width:180px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(r[0])+'</span><div style="flex:1;height:8px;background:#eef2f7;border-radius:4px;overflow:hidden"><div style="width:'+Math.round(Math.abs(v)/mx*100)+'%;height:100%;background:'+(neg2?'#dc2626':'#0d9488')+'"></div></div><span style="width:80px;text-align:right;font-weight:600;color:'+(neg2?'#dc2626':'#0f172a')+'">'+fmtW(v)+'</span></div>'; }).join('')||'<div style="font-size:12px;color:#9ca3af">데이터 없음</div>';
-  document.getElementById('ovm-body').innerHTML=note+head+bars;
+  document.getElementById('ovm-title').textContent=rg+' 분석 ('+f+'~'+t+'월)';
+  var kc=function(l,v,sub,col){ return '<div style="background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:10px 12px"><div style="font-size:10.5px;color:#64748b;font-weight:600">'+l+'</div><div style="font-size:17px;font-weight:800;color:'+(col||'#0f172a')+'">'+v+'</div>'+(sub?'<div style="font-size:10.5px;color:#94a3b8">'+sub+'</div>':'')+'</div>'; };
+  var kpi='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">'+
+    kc('당기 ('+f+'~'+t+'월)',fmtW(curV),rows.filter(function(r){return r.v>0;}).length+'개 거래처')+
+    kc('전년 동기',fmtW(preV),null,'#64748b')+
+    kc('YoY',(y===null?'-':(parseFloat(y)>=0?'▲':'▼')+Math.abs(parseFloat(y)).toFixed(1)+'%'),null,(y!==null&&parseFloat(y)>=0)?'#16a34a':'#dc2626')+
+    kc('목표 대비',(ach===null?'목표 미설정':ach.toFixed(0)+'%'),(tgt>0?'목표 '+fmtW(tgt):''),(ach===null?'#94a3b8':(ach>=100?'#16a34a':(ach>=85?'#d97706':'#dc2626'))))+'</div>';
+  // 월 추이 (26 파랑 / 25 회색) — 월 목표 평균선은 캡션으로
+  var mx=1; for(var m=1;m<=12;m++){ mx=Math.max(mx,m26[m],m25[m]); }
+  var bars=''; for(var m=1;m<=12;m++){
+    bars+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'+
+      '<div style="display:flex;align-items:flex-end;gap:2px;height:58px">'+
+      '<div title="'+(yr-1)+'년 '+m+'월 '+fmtW(m25[m])+'" style="width:8px;height:'+Math.max(2,m25[m]/mx*58)+'px;background:#d7dee8;border-radius:2px 2px 0 0"></div>'+
+      '<div title="'+yr+'년 '+m+'월 '+fmtW(m26[m])+'" style="width:8px;height:'+Math.max(2,m26[m]/mx*58)+'px;background:#2563eb;border-radius:2px 2px 0 0"></div>'+
+      '</div><div style="font-size:9px;color:#94a3b8">'+m+'</div></div>'; }
+  var trend='<div style="border:1px solid #eef2f7;border-radius:10px;padding:10px 12px;margin-bottom:12px">'+
+    '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:11.5px;font-weight:700;color:#334155">월별 추이</span>'+
+    '<span style="font-size:10px;color:#94a3b8">회색 '+(yr-1)+' · 파랑 '+yr+(tgt>0?' · 기간 월평균 목표 '+fmtW(tgt/Math.max(1,t-f+1)):'')+'</span></div>'+
+    '<div style="display:flex;gap:3px">'+bars+'</div></div>';
+  // 거래처 표 — 수치 중심(당기·전년·YoY) + 점유 미니바
+  var top=rows.filter(function(r){return r.v>0;}).slice(0,10);
+  var rest=rows.filter(function(r){return r.v>0;}).slice(10);
+  var restV=rest.reduce(function(s,r){return s+r.v;},0), restP=rest.reduce(function(s,r){return s+r.pv;},0);
+  var mxv=top.length?top[0].v:1;
+  var trow=function(r){ var yy=r.pv>0?((r.v/r.pv-1)*100):null;
+    return '<tr style="border-top:1px solid #f4f6f9">'+
+      '<td style="padding:5px 8px;font-size:12px;font-weight:600;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(r.nm)+' <span style="font-size:10.5px;color:#94a3b8">'+ccFI(r.c)+' '+_esc(ccKo(r.c))+'</span></td>'+
+      '<td style="padding:5px 4px"><div style="width:52px;height:5px;background:#eef2f7;border-radius:3px;overflow:hidden"><div style="width:'+Math.min(100,r.v/mxv*100).toFixed(0)+'%;height:100%;background:#2563eb"></div></div></td>'+
+      '<td style="padding:5px 8px;text-align:right;font-weight:700;white-space:nowrap">'+fmtW(r.v)+'</td>'+
+      '<td style="padding:5px 8px;text-align:right;color:#94a3b8;white-space:nowrap">'+(r.pv?fmtW(r.pv):'-')+'</td>'+
+      '<td style="padding:5px 8px;text-align:right;font-weight:700;white-space:nowrap;color:'+(yy===null?'#7c3aed':(yy>=0?'#16a34a':'#dc2626'))+'">'+(yy===null?(r.v>0?'신규':'-'):((yy>=0?'▲':'▼')+Math.abs(yy).toFixed(0)+'%'))+'</td></tr>'; };
+  var tbl='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#94a3b8;font-size:10.5px"><th style="text-align:left;padding:4px 8px">거래처</th><th></th><th style="text-align:right;padding:4px 8px">당기</th><th style="text-align:right;padding:4px 8px">전년</th><th style="text-align:right;padding:4px 8px">YoY</th></tr></thead><tbody>'+
+    top.map(trow).join('')+
+    (rest.length?'<tr style="border-top:1px solid #eef2f7;background:#fafbfc"><td style="padding:5px 8px;font-size:11.5px;color:#64748b">외 '+rest.length+'개</td><td></td><td style="padding:5px 8px;text-align:right;font-weight:600">'+fmtW(restV)+'</td><td style="padding:5px 8px;text-align:right;color:#94a3b8">'+fmtW(restP)+'</td><td></td></tr>':'')+
+    (neg<0?'<tr style="border-top:1px solid #eef2f7"><td style="padding:5px 8px;font-size:11.5px;color:#dc2626">반품·조정</td><td></td><td style="padding:5px 8px;text-align:right;font-weight:600;color:#dc2626">'+fmtW(neg)+'</td><td></td><td></td></tr>':'')+
+    '</tbody></table>';
+  var note=isEtc?'<div style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px">지역 매핑이 없는 거래처 묶음입니다. 목표가 없어 달성률은 표시하지 않습니다.</div>':'';
+  document.getElementById('ovm-body').innerHTML=note+kpi+trend+tbl;
   document.getElementById('ovm-modal').style.display='flex';
 }
 

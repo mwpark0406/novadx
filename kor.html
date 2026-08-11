@@ -1385,13 +1385,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
   <!-- 지역별 분석 -->
   <style id="ana-css">.ana-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.ana-tabs .anatab{border:1px solid #e4e8ef;background:#fff;border-radius:9999px;padding:7px 16px;font-size:13px;font-weight:600;color:#4b5563;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,background .15s,color .15s}.ana-tabs .anatab:hover{border-color:#2563eb;color:#2563eb}.ana-tabs .anatab.on{background:#2563eb;border-color:#2563eb;color:#fff}.ana-tabs .anatab i{font-size:14px}</style>
   <div id="page-region" class="page">
-    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab on"><i class="bi bi-geo-alt"></i>지역별</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-reps" onclick="showPage('device-reps')"><i class="bi bi-person-badge"></i>담당자별</button>
-      <button class="anatab" data-sub="cons-hospitals" onclick="showPage('cons-hospitals')"><i class="bi bi-building-check"></i>병원별</button>
-      <button class="anatab" data-sub="region" onclick="showPage('region')"><i class="bi bi-geo-alt"></i>지역별</button>
-      <button class="anatab" data-sub="capa" onclick="showPage('capa')"><i class="bi bi-speedometer2"></i>Capa 분석</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab on"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab" onclick="showPage('device-reps',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab" onclick="showPage('capa',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-geo-alt me-2"></i>지역별 매출 분석 <span style="font-size:12px;font-weight:400;color:#64748b">시도 · 구군</span></div></div>
       <div class="btn-group btn-group-sm" role="group">
@@ -2054,10 +2048,6 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
   <!-- 고객사 (실제 거래 데이터 기반) -->
   <div id="page-customers" class="page">
     <div class="wt-tabs"><button class="wt-tab on"><i class="bi bi-building"></i>고객사</button><button class="wt-tab" onclick="showPage('equipments',document.querySelector('.nav-link[data-grp=mast]'))"><i class="bi bi-cpu"></i>장비</button><button class="wt-tab" onclick="showPage('products',document.querySelector('.nav-link[data-grp=mast]'))"><i class="bi bi-box-seam"></i>제품</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="customers" onclick="showPage('customers')"><i class="bi bi-building"></i>고객사</button>
-      <button class="anatab" data-sub="equipments" onclick="showPage('equipments')"><i class="bi bi-cpu"></i>장비</button>
-    </div>
     <div class="wt-mast"><div><div class="kick">노바진단 SALES</div><div class="t">고객사</div></div><span class="text-muted" style="font-size:12px"><i class="bi bi-info-circle me-1"></i>실제 매출 데이터 기반 · 병원 클릭 → 상세·정보수정</span></div>
     <!-- 보기 선택 카드 -->
     <div class="row g-3 mb-3" id="cust-view-cards"></div>
@@ -2075,10 +2065,6 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
   <!-- 장비 -->
   <div id="page-equipments" class="page">
     <div class="wt-tabs"><button class="wt-tab" onclick="showPage('customers',document.querySelector('.nav-link[data-grp=mast]'))"><i class="bi bi-building"></i>고객사</button><button class="wt-tab on"><i class="bi bi-cpu"></i>장비</button><button class="wt-tab" onclick="showPage('products',document.querySelector('.nav-link[data-grp=mast]'))"><i class="bi bi-box-seam"></i>제품</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="customers" onclick="showPage('customers')"><i class="bi bi-building"></i>고객사</button>
-      <button class="anatab" data-sub="equipments" onclick="showPage('equipments')"><i class="bi bi-cpu"></i>장비</button>
-    </div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t">장비 관리</div></div>
       <div class="d-flex gap-2 align-items-center">
@@ -2153,11 +2139,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 
   <!-- 소모품 매출 -->
   <div id="page-consumables" class="page">
-    <div class="wt-tabs"><button class="wt-tab on"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-sales" onclick="showPage('device-sales')"><i class="bi bi-box-seam"></i>제품 매출</button>
-      <button class="anatab" data-sub="consumables" onclick="showPage('consumables')"><i class="bi bi-capsule"></i>소모품 매출</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab on"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab" onclick="showPage('device-reps',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab" onclick="showPage('capa',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-capsule me-2"></i>소모품 매출 <span style="font-size:14px;font-weight:700;color:#2563eb">심층분석</span></div><div style="font-size:11.5px;color:#94a3b8;margin-top:3px">노바큐 그룹 · 카트리지 · Tip 월별 추이 — <b style="color:#64748b">종합엔 없는 품목 심층</b></div></div>
       <div class="d-flex gap-2 align-items-center">
@@ -2268,11 +2250,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 
   <!-- 제품 매출현황 -->
   <div id="page-device-sales" class="page">
-    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab on"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-sales" onclick="showPage('device-sales')"><i class="bi bi-box-seam"></i>제품 매출</button>
-      <button class="anatab" data-sub="consumables" onclick="showPage('consumables')"><i class="bi bi-capsule"></i>소모품 매출</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab on"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab" onclick="showPage('device-reps',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab" onclick="showPage('capa',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-box-seam me-2"></i>제품 매출 <span style="font-size:14px;font-weight:700;color:#2563eb">심층분석</span></div><div style="font-size:11.5px;color:#94a3b8;margin-top:3px">제품별 랭킹 · 판매 대수 · 평균단가 · 믹스 — <b style="color:#64748b">종합엔 없는 품목 심층</b></div></div>
       <div class="d-flex gap-2 align-items-center">
@@ -2332,13 +2310,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 
   <!-- 병원별 분석 (통합) -->
   <div id="page-cons-hospitals" class="page">
-    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab on"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button></div>
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-reps" onclick="showPage('device-reps')"><i class="bi bi-person-badge"></i>담당자별</button>
-      <button class="anatab" data-sub="cons-hospitals" onclick="showPage('cons-hospitals')"><i class="bi bi-building-check"></i>병원별</button>
-      <button class="anatab" data-sub="region" onclick="showPage('region')"><i class="bi bi-geo-alt"></i>지역별</button>
-      <button class="anatab" data-sub="capa" onclick="showPage('capa')"><i class="bi bi-speedometer2"></i>Capa 분석</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab on"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab" onclick="showPage('device-reps',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab" onclick="showPage('capa',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-building-check me-2"></i>병원별 영업 인텔리전스</div>
         <div style="font-size:11.5px;color:#64748b;margin-top:4px"><i class="bi bi-info-circle me-1"></i>고객사 거래 기준 — 내부거래(노바진단(주))·의료기기 품목 제외라 종합 화면의 회계 총액과 소폭 차이가 납니다</div></div>
@@ -2488,12 +2460,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 
   <!-- 담당자별 제품 분석 -->
   <div id="page-device-reps" class="page">
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-reps" onclick="showPage('device-reps')"><i class="bi bi-person-badge"></i>담당자별</button>
-      <button class="anatab" data-sub="cons-hospitals" onclick="showPage('cons-hospitals')"><i class="bi bi-building-check"></i>병원별</button>
-      <button class="anatab" data-sub="region" onclick="showPage('region')"><i class="bi bi-geo-alt"></i>지역별</button>
-      <button class="anatab" data-sub="capa" onclick="showPage('capa')"><i class="bi bi-speedometer2"></i>Capa 분석</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab on"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab" onclick="showPage('capa',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-person-badge me-2"></i>담당자별 매출 현황</div><div style="font-size:11.5px;color:#94a3b8;margin-top:3px">담당자·대리점 실적은 <b style="color:#64748b">장비 기준</b> · 소모품은 담당자가 없어 <b style="color:#64748b">합계 매출에만 반영</b> → 합계 = 종합 전체와 일치</div></div>
       <div class="d-flex gap-2 align-items-center">
@@ -2544,12 +2511,7 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
 
   <!-- Capa 달성 분석 -->
   <div id="page-capa" class="page">
-    <div class="ana-tabs">
-      <button class="anatab" data-sub="device-reps" onclick="showPage('device-reps')"><i class="bi bi-person-badge"></i>담당자별</button>
-      <button class="anatab" data-sub="cons-hospitals" onclick="showPage('cons-hospitals')"><i class="bi bi-building-check"></i>병원별</button>
-      <button class="anatab" data-sub="region" onclick="showPage('region')"><i class="bi bi-geo-alt"></i>지역별</button>
-      <button class="anatab" data-sub="capa" onclick="showPage('capa')"><i class="bi bi-speedometer2"></i>Capa 분석</button>
-    </div>
+    <div class="wt-tabs"><button class="wt-tab" onclick="showPage('consumables',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-capsule"></i>소모품</button><button class="wt-tab" onclick="showPage('device-sales',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-box-seam"></i>제품</button><button class="wt-tab" onclick="showPage('cons-hospitals',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-building-check"></i>병원별</button><button class="wt-tab" onclick="showPage('region',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-geo-alt"></i>지역별</button><button class="wt-tab" onclick="showPage('device-reps',document.querySelector('.nav-link[data-grp=anal]'))"><i class="bi bi-person-badge"></i>담당자별</button><button class="wt-tab on"><i class="bi bi-speedometer2"></i>Capa 분석</button></div>
     <div class="wt-mast">
       <div><div class="kick">노바진단 SALES</div><div class="t"><i class="bi bi-speedometer2 me-2"></i>Capa 달성 분석</div><div style="font-size:11.5px;color:#94a3b8;margin-top:3px">월 Capa 40억(장비 30 = 대리점 21 + 직판 9, 소모품 10) 대비 <b style="color:#64748b">채널·담당자별 달성/부진</b>을 진단</div></div>
     </div>

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
 <script>
 /* ═══ Chart.js y축 눈금 최적화 (WT_YFIT) ══════════════════════════════
    문제: 데이터가 25~30억 구간인데 y축이 0~35억 → 아래 절반이 빈 공간.
@@ -3016,7 +3017,8 @@ function _monthTarget(mo){
 // ── 상세 조회 ────────────────────────────────────────────
 const qState={f:1,t:5,ch:'all',cat:'all',tab:'prod',open:{},fold:{}};
 // 국가 코드 → [국기, 한국어명] — 화면에는 영문 약어 대신 이걸 쓴다
-const QGEO={KR:['🇰🇷','국내'],US:['🇺🇸','미국'],VN:['🇻🇳','베트남'],AE:['🇦🇪','아랍에미리트'],DE:['🇩🇪','독일'],BR:['🇧🇷','브라질'],TW:['🇹🇼','대만'],CN:['🇨🇳','중국'],IN:['🇮🇳','인도'],'국내':['🇰🇷','국내']};
+const QGEO={KR:['kr','국내'],US:['us','미국'],VN:['vn','베트남'],AE:['ae','아랍에미리트'],DE:['de','독일'],BR:['br','브라질'],TW:['tw','대만'],CN:['cn','중국'],IN:['in','인도'],'국내':['kr','국내']};
+function qFI(c){return '<span class="fi fi-'+c+'" style="border-radius:2px;box-shadow:0 0 0 1px rgba(15,23,42,.12);font-size:13px"></span>';}
 function syncQ(){
   document.querySelectorAll('#q-ch button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-v')===qState.ch));
   document.querySelectorAll('#q-cat button').forEach(b=>b.classList.toggle('on',b.getAttribute('data-v')===qState.cat));
@@ -3111,13 +3113,13 @@ function renderQuery(){
     // 이름과 숫자 사이 빈 공간은 구성비 막대로 채운다(최대 항목 대비)
     const barw=Math.max(1,Math.min(100,(+x.val||0)/_qMax*100));
     // 국가 코드는 국기+한국어명으로
-    const tg=(x.tag&&QGEO[x.tag])?(QGEO[x.tag][0]+' '+QGEO[x.tag][1]):x.tag;
-    const lead=x.flag?'<span class="fl">'+x.flag+'</span>':'<span class="dl-dot" style="background:'+_yoyCol(x.y)+'"></span>';
+    const tg=(x.tag&&QGEO[x.tag])?(qFI(QGEO[x.tag][0])+' '+QGEO[x.tag][1]):x.tag;
+    const lead=x.flag?'<span class="fl">'+qFI(x.flag)+'</span>':'<span class="dl-dot" style="background:'+_yoyCol(x.y)+'"></span>';
     // 거래처는 인라인 펼침 대신 상세 모달
     const click=(qState.tab==='cust'&&x.name!=='미분류')?('qCustOpen('+_jsArg(x.name)+')'):('qToggle('+idx+')');
     const row='<div class="qd-c'+(qState.tab==='prod'?' sub':'')+'" onclick="'+click+'">'+
       '<span class="n">'+lead+'<span class="nm">'+esc(x.name)+'</span>'+
-        ((tg&&qState.tab!=='prod'&&!x.flag)?'<span class="tg">'+esc(tg)+'</span>':'')+
+        ((tg&&qState.tab!=='prod'&&!x.flag)?'<span class="tg">'+tg+'</span>':'')+
         '<span class="nb"><i style="width:'+barw.toFixed(0)+'%"></i></span>'+
         '<span class="sh">'+share.toFixed(1)+'%'+(contrib>=5?' · 기여 '+contrib+'%':'')+'</span></span>'+
       '<span class="v">'+fmtW(x.val)+(x.qty>0?'<b'+(x.qtyNote?' title="'+esc(x.qtyNote)+' 기준"':'')+'>'+x.qty.toLocaleString()+'대</b>':'')+'</span>'+
@@ -3405,7 +3407,7 @@ function _qGeo(){
         (incDev?miniBar('장비',devV,Math.max(consV,devV,1),DEV_PURPLE):'')+(incCons?miniBar('소모품',consV,Math.max(consV,devV,1),CONS_CYAN):'')+'</div>'+
         '<div class="col-md-6"><div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">국내 제품 Top</div>'+_domTopProds(f,t,qState.cat)+'</div></div>';
       const _dq=incDev?Object.values(DEVICE.prodMoQty2026||{}).reduce((s,mo)=>s+sumMo(mo,f,t),0):0;
-      out.push({name:'국내',flag:'🇰🇷',tag:'전체',val:dom,prev:domPrev,qty:_dq,color:DOM_BLUE,detail});
+      out.push({name:'국내',flag:'kr',tag:'전체',val:dom,prev:domPrev,qty:_dq,color:DOM_BLUE,detail});
     }
   }
   if(qState.ch!=='dom'){
@@ -3420,7 +3422,7 @@ function _qGeo(){
       const pmax=prods.length?prods[0][1]:1;
       const detail='<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">제품별 (상위)</div>'+
         (prods.length?prods.slice(0,5).map(p=>miniBar(p[0],p[1],pmax,INTL_TEAL)).join(''):'<span style="font-size:12px;color:#94a3b8">데이터 없음</span>');
-      out.push({name:(QGEO[cn]?QGEO[cn][1]:cn),flag:(QGEO[cn]?QGEO[cn][0]:'🌐'),tag:'해외',val,prev,qty:_qty,color:INTL_TEAL,detail});
+      out.push({name:(QGEO[cn]?QGEO[cn][1]:cn),flag:(QGEO[cn]?QGEO[cn][0]:null),tag:'해외',val,prev,qty:_qty,color:INTL_TEAL,detail});
     });
   }
   return out.sort((a,b)=>b.val-a.val);

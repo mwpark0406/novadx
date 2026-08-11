@@ -400,6 +400,9 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 .gx-sum td{background:#eef3f9;font-size:16.5px;border-bottom:2px solid #c8d5e4}
 .gx-sum .gx-nm{font-size:18px}
 .gx-item:hover td{background:#f7fafd}
+.gx-grp td{background:#f8fafc;font-size:11px;font-weight:800;color:#64748b;letter-spacing:.02em;padding:6px 12px 4px}
+.gx-subt td{background:#f4f7fb;font-size:12.5px;font-weight:700;color:#334155;border-top:1px dashed #cbd5e1}
+.gx-subt .gx-nm{font-size:13px;color:#475569}
 .gx-ins{margin-top:14px;background:#fffdf3;border:1px solid #f0dfa8;border-left:5px solid #e0a800;border-radius:10px;padding:12px 18px;font-size:15.5px;line-height:1.6;color:#3a3220}
 /* ══ 경영 코크핏(전사 운영현황) — 결론 먼저, 근거는 아래로 ══ */
 .ck-hero{background:linear-gradient(135deg,#16324f,#1e4b73);color:#fff;border-radius:14px;padding:20px 24px 18px;margin-bottom:22px}
@@ -3624,7 +3627,8 @@ function renderGoals(){
     const gapCol=c.gap==null?'#64748b':(c.gap>=0?'#0f766e':'#c0392b');
     const yoyTxt=(c.yoy===null)?'–':((c.yoy>=0?'▲':'▼')+Math.abs(c.yoy).toFixed(1)+'%');
     const yoyCol=(c.yoy===null)?'#94a3b8':(c.yoy>=0?'#0f766e':'#c0392b');
-    return '<tr class="'+(isSum?'gx-sum':'gx-item')+'"'+((!isSum&&x.dk)?(' onclick="openDrill(\''+_jsAttr(x.dk)+'\',1,'+t+')" style="cursor:pointer"'):'')+'>'+
+    const _rc=(isSum===true?'gx-sum':isSum==='subt'?'gx-subt':'gx-item');
+    return '<tr class="'+_rc+'"'+((!isSum&&x.dk)?(' onclick="openDrill(\''+_jsAttr(x.dk)+'\',1,'+t+')" style="cursor:pointer"'):'')+'>'+
       '<td class="gx-nm">'+esc(x.label)+((!isSum&&x.dk)?'<span class="gx-arw">›</span>':'')+'</td>'+
       '<td class="gx-n">'+_w(x.act)+'</td>'+
       '<td class="gx-n gx-mut">'+_w(x.tgt)+'</td>'+
@@ -3632,11 +3636,25 @@ function renderGoals(){
         '<span class="gx-track"><span class="gx-fill" style="width:'+c.rc.toFixed(1)+'%;background:'+(c.actC>=100?'#0f766e':c.actC>=70?'#93b4f4':c.actC>=50?'#f0b429':'#e07a70')+'"></span></span></td>'+
       '<td class="gx-n" style="color:'+gapCol+';font-weight:700">'+gapTxt+'</td>'+
       '<td class="gx-n" style="color:'+yoyCol+'">'+yoyTxt+'</td></tr>'; };
-  const gxTable=(title,sum,rows)=>'<div class="gx-sec">'+title+'</div>'+
-    '<table class="gx-tbl"><thead><tr><th class="l">부문</th><th>실적</th><th>목표</th><th>달성률</th><th>미달 / 초과</th><th>전년비</th></tr></thead>'+
+  const _gxHead='<table class="gx-tbl"><thead><tr><th class="l">부문</th><th>실적</th><th>목표</th><th>달성률</th><th>미달 / 초과</th><th>전년비</th></tr></thead>';
+  const gxTable=(title,sum,rows)=>'<div class="gx-sec">'+title+'</div>'+_gxHead+
     '<tbody>'+gxRow(sum,true)+rows.slice().sort((a,b)=>rk(a)-rk(b)).map(x=>gxRow(x,false)).join('')+'</tbody></table>';
+  // 해외는 '직수출 지역'과 '해외 법인'을 그룹으로 나누고 각 소계 — 축이 섞여 헷갈리던 표 정리
+  const _isCorp=x=>/법인$/.test(String(x.dk||'').split('|')[1]||'');
+  const _subT=arr=>({act:S(arr,'act'),pnd:S(arr,'pnd'),tgt:S(arr,'tgt'),act25:S(arr,'act25')});
+  const _rkSort=arr=>arr.slice().sort((a,b)=>rk(a)-rk(b));
+  const _gxGrp=lbl=>'<tr class="gx-grp"><td colspan="6">'+lbl+'</td></tr>';
+  const _gxSub=(label,arr)=>gxRow(Object.assign({label:label},_subT(arr)),'subt');
+  const _reg=intl.filter(x=>!_isCorp(x)), _corp=intl.filter(_isCorp);
+  const gxTableIntl=()=>'<div class="gx-sec">해외 영업</div>'+_gxHead+'<tbody>'+
+    gxRow(Object.assign({label:'해외 합계'},iTot),true)+
+    _gxGrp('직수출 지역 <span style="font-weight:500;color:#94a3b8">· 해외영업팀 직수출</span>')+
+    _rkSort(_reg).map(x=>gxRow(x,false)).join('')+_gxSub('지역 소계',_reg)+
+    _gxGrp('해외 법인 <span style="font-weight:500;color:#94a3b8">· 본사→현지법인 선적</span>')+
+    _rkSort(_corp).map(x=>gxRow(x,false)).join('')+_gxSub('법인 소계',_corp)+
+    '</tbody></table>';
   h+='<div class="gx-grid"><div>'+gxTable('국내 영업',Object.assign({label:'국내 합계'},dTot),dom)+'</div>'+
-     '<div>'+gxTable('해외 영업 (지역·법인)',Object.assign({label:'해외 합계'},iTot),intl)+'</div></div>';
+     '<div>'+gxTableIntl()+'</div></div>';
   const y2=short.slice(0,2).reduce((s,x)=>s-x.gap,0);
   h+='<div class="gx-ins"><b>요약</b> · 전사 '+(achC==null?'-':achC.toFixed(0)+'%')+' 달성, 목표까지 <b style="color:#c0392b">'+fmtW(need)+'</b> 부족'+
     (short.length?('<br>부족분의 <b>'+(gapSum>0?Math.round(y2/gapSum*100):0)+'%</b>가 <b style="color:#c0392b">'+esc(short[0].label)+(short[1]?' · '+esc(short[1].label):'')+'</b>에서 발생 → 집중 관리 필요'):'')+

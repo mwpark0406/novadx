@@ -3798,11 +3798,12 @@ async function _showLauncherOrApp(user) {
   _isStrat = String(profile?.dept||'').replace(/\s/g,'').includes('영업전략');   // 영업전략파트 → 현황판 열람 허용
   // 임시비밀번호를 아직 안 바꾼 사용자 → 강제 변경(마스터 제외)
   if(profile.temp_pw && String(profile.temp_pw).trim() && user.email !== 'master@demo.local'){ _hideLoading(); _showForcePw(); return; }
-  // 새로고침 시 이전 상태 복원
-  if(sessionStorage.getItem('wt_app') === 'admin' && (_isStrat || _isAdmin)) {
+  // 새로고침 시 이전 상태 복원 — wt_app 뿐 아니라 히스토리 상태도 admin 이어야 복원(런처에 있는데 오복원되는 버그 방지)
+  if(sessionStorage.getItem('wt_app') === 'admin' && (history.state && history.state.page==='admin') && (_isStrat || _isAdmin)) {
     document.getElementById('launcher-screen').style.display='flex';
     showAdminPanel(); _hideLoading(); return;
   }
+  if(sessionStorage.getItem('wt_app') === 'admin') sessionStorage.removeItem('wt_app');   // 히스토리는 런처인데 wt_app 만 admin 으로 남은 stale 상태 정리
   if(sessionStorage.getItem('wt_app') === 'korea' && _hasAccess(access,'korea')) {
     await _bootApp(access); return;
   }

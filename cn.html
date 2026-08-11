@@ -5356,6 +5356,13 @@ function filterOrders(){
 
 }
 
+// 목록 상한 — 전량 렌더 시 1.7만px. 합계는 전체 기준 유지, 나머지는 '더 보기'.
+var _cnListCap=120;
+function _cnMoreBtn(kind,total,shown){ if(total<=shown) return '';
+  var zh=lang==='cn';
+  return '<tr><td colspan="99" style="text-align:center;padding:8px">'+
+    '<button class="fx-btn sm gray" onclick="_cnListCap+=300;'+(kind==='o'?'renderOrders(window._lastOrdersView)':'renderPayments(window._lastPaysView)')+'">'+
+    (zh?'加载更多':'더 보기')+' · '+(total-shown).toLocaleString()+(zh?'件隐藏':'개 숨김')+'</button></td></tr>'; }
 function renderOrders(data){ window._lastOrdersView=data;
 
   data=data.slice().sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
@@ -5396,11 +5403,11 @@ function renderOrders(data){ window._lastOrdersView=data;
     return '<button class="edit-btn" style="font-size:11px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;padding:3px 8px;cursor:pointer;white-space:nowrap" onclick="openInvoice('+idx+')">'+(zh?'🧾 請求No.入力':'🧾 인보이스 No. 입력')+'</button>';
   }
 
-  var total=0,tbody=document.getElementById('ordersTableBody');
+  var total=data.reduce(function(s,o){return s+(o.amount||0);},0);
+  var _shown=data.slice(0,_cnListCap);
+  var tbody=document.getElementById('ordersTableBody');
 
-  tbody.innerHTML=data.map(function(o){
-
-    total+=o.amount||0;
+  tbody.innerHTML=_shown.map(function(o){
 
     var idx=allOrders.indexOf(o);
 
@@ -5424,7 +5431,7 @@ function renderOrders(data){ window._lastOrdersView=data;
 
       '</td></tr>';
 
-  }).join('')||'<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:24px">'+(lang==='cn'?'无数据':'데이터 없음')+'</td></tr>';
+  }).join('')+_cnMoreBtn('o',data.length,_shown.length)||'<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:24px">'+(lang==='cn'?'无数据':'데이터 없음')+'</td></tr>';
 
   document.getElementById('ordersFooter').textContent=(lang==='cn'?'合计 '+data.length+'件 | 合计金额':'총 '+data.length+'건 | 합계')+' ¥'+fmt(total);
 
@@ -5504,11 +5511,11 @@ function renderPayments(data){ window._lastPaysView=data;
 
   allOrders.forEach(function(o){ if(o.stableId) orderMap[o.stableId]=o; });
 
-  var total=0,tbody=document.getElementById('paymentsTableBody');
+  var total=data.reduce(function(s,p){return s+(p.amount||0);},0);
+  var _shown=data.slice(0,_cnListCap);
+  var tbody=document.getElementById('paymentsTableBody');
 
-  tbody.innerHTML=data.map(function(p){
-
-    total+=p.amount||0;
+  tbody.innerHTML=_shown.map(function(p){
 
     var idx=allPayments.indexOf(p);
 
@@ -5548,7 +5555,7 @@ function renderPayments(data){ window._lastPaysView=data;
 
       '</td></tr>';
 
-  }).join('')||'<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:24px">'+(lang==='cn'?'无数据':'데이터 없음')+'</td></tr>';
+  }).join('')+_cnMoreBtn('p',data.length,_shown.length)||'<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:24px">'+(lang==='cn'?'无数据':'데이터 없음')+'</td></tr>';
 
   document.getElementById('paymentsFooter').textContent=(lang==='cn'?'合计 '+data.length+'件 | 合计金额':'총 '+data.length+'건 | 합계')+' ¥'+fmt(total);
 
@@ -7834,7 +7841,7 @@ function renderDaily(){
   $('fxDHead').innerHTML='<tr><th>일자</th><th>'+cl1+'</th><th>제품</th><th>분류</th><th class="num">수량</th><th class="num">금액</th><th class="num">수금/지불</th><th class="num">잔액</th><th>Aging</th><th>본사송금</th><th style="width:96px">처리</th></tr>';
   $('fxDBody').innerHTML=
     '<tr class="tsum"><td colspan="5">합계 ('+rows.length.toLocaleString()+'건)</td><td class="num">'+fmt(tTot)+'</td><td></td><td class="num">'+fmt(tOut)+'</td><td colspan="3"></td></tr>'+
-    rows.slice(0,400).map(function(x){
+    rows.slice(0,150).map(function(x){
       var o=outst(x), paid=(x.total||0)-o;
       return '<tr class="clk" onclick="FIN.openDaily(\''+x.id+'\')"><td>'+esc(x.date)+((x.recog&&x.recog!==x.date)?'<br><span class="fx-mini" style="color:#16324f;font-weight:700">'+jt('매출 ','销售 ')+esc(x.recog)+'</span>':'')+'</td><td>'+esc(x.client||'-')+'</td>'+
         '<td style="white-space:normal;max-width:330px">'+esc(x.product)+'</td>'+
@@ -7843,7 +7850,7 @@ function renderDaily(){
         '<td class="num" style="font-weight:800;color:'+(o>=1?'#dc2626':'#cbd5e1')+'">'+fmt(o)+'</td>'+
         '<td>'+(o>=1?agingOf(x.recog||x.date):'<span class="fx-badge fb-ok">완료</span>')+'</td><td>'+(x.hqRemit?'〇':'')+'</td>'+'<td onclick="event.stopPropagation()">'+(o>=1?'<button class="fx-btn sm green" onclick="FIN.quickCollect(\''+x.id+'\')">＋'+(kind==='sales'?'수금':'지불')+'</button>':'')+'</td></tr>';
     }).join('');
-  $('fxDFoot').textContent='표시 '+Math.min(rows.length,400)+' / '+rows.length+'건'+((only||_agf)?jt(' · 미수는 전 기간 조회(연도무시)',' · 应收为全期间'):'')+(rows.length>400?' (상위 400건 — 필터로 좁혀주세요)':'');
+  $('fxDFoot').textContent='표시 '+Math.min(rows.length,150)+' / '+rows.length+'건'+((only||_agf)?jt(' · 미수는 전 기간 조회(연도무시)',' · 应收为全期间'):'')+(rows.length>150?' (상위 400건 — 필터로 좁혀주세요)':'');
 }
 function openDaily(id){
   var kind=_day, isNew=!id;

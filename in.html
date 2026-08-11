@@ -833,6 +833,34 @@ function vClients(){
     `<input class="sel" placeholder="거래처·제품 검색" value="${esc(fClientQ)}" oninput="fClientQ=this.value;_thSearch()" onkeydown="if(event.key==='Enter')render()" style="min-width:150px">`)
     +`<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th class="l">거래처</th><th>누적 매출</th><th>수금</th><th>미수</th><th>진행 수주</th><th class="l">최근 매출일</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
+function _cliTrend(sales){
+  // 월별 추이 2026 vs 2025 — 라이브러리 없이 CSS 막대
+  const m26=Array(13).fill(0), m25=Array(13).fill(0);
+  sales.forEach(s=>{ const y=String(s.date).slice(0,4), m=+String(s.date).slice(5,7)||0;
+    if(!m)return; if(y==='2026')m26[m]+=(+s.amt||0); else if(y==='2025')m25[m]+=(+s.amt||0); });
+  const mx=Math.max(...m26,...m25,1);
+  let bars='';
+  for(let m=1;m<=12;m++){
+    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div style="display:flex;align-items:flex-end;gap:2px;height:56px">
+        <div title="2025 ${m}월 ${fm(m25[m])}" style="width:7px;height:${Math.max(2,m25[m]/mx*56)}px;background:#d7dee8;border-radius:2px 2px 0 0"></div>
+        <div title="2026 ${m}월 ${fm(m26[m])}" style="width:7px;height:${Math.max(2,m26[m]/mx*56)}px;background:var(--pri,#2563eb);border-radius:2px 2px 0 0"></div>
+      </div><div class="muted" style="font-size:9px">${m}</div></div>`;
+  }
+  return `<div class="dwcard"><div class="sect"><span>📈 월별 추이</span><span class="muted" style="font-size:10px;margin-left:auto">회색 2025 · 파랑 2026</span></div>
+    <div style="display:flex;gap:3px;padding-top:4px">${bars}</div></div>`;
+}
+function _cliProds(sales){
+  const by={}; sales.forEach(s=>{ if(s.product) by[s.product]=(by[s.product]||0)+(+s.amt||0); });
+  const arr=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(!arr.length) return '';
+  const mx=arr[0][1]||1, tot=Object.values(by).reduce((a,b)=>a+b,0)||1;
+  return `<div class="dwcard"><div class="sect"><span>📦 제품 구성 Top ${arr.length}</span></div>`+
+    arr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
+      <span style="width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</span>
+      <div style="flex:1;height:7px;background:var(--line,#eef2f7);border-radius:4px;overflow:hidden"><div style="width:${(v/mx*100).toFixed(0)}%;height:100%;background:var(--pri,#2563eb)"></div></div>
+      <b style="width:74px;text-align:right">${fm(v)}</b><span class="muted" style="width:38px;text-align:right;font-size:11px">${(v/tot*100).toFixed(0)}%</span></div>`).join('')+`</div>`;
+}
 function openClient(name){
   const sales=(D.sales||[]).filter(s=>s.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const orders=(D.orders||[]).filter(o=>o.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -844,7 +872,7 @@ function openClient(name){
       <div><div class="muted" style="font-size:11px">누적 매출</div><b style="font-size:16px">${fm(sale)}</b></div>
       <div><div class="muted" style="font-size:11px">수금</div><b style="font-size:16px;color:var(--ok)">${fm(col)}</b></div>
       <div><div class="muted" style="font-size:11px">미수</div><b style="font-size:16px;color:${out?'var(--bad)':'var(--ink)'}">${fm(out)}</b></div></div></div>
-    <div class="dwcard"><div class="sect"><span>🧾 매출 이력</span></div>${sHtml}</div>
+    `+_cliTrend(sales)+_cliProds(sales)+`<div class="dwcard"><div class="sect"><span>🧾 매출 이력</span></div>${sHtml}</div>
     <div class="dwcard"><div class="sect"><span>📝 수주 이력</span></div>${oHtml}</div>`);
 }
 

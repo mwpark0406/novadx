@@ -7843,7 +7843,7 @@ function renderDaily(){
     '<tr class="tsum"><td colspan="5">합계 ('+rows.length.toLocaleString()+'건)</td><td class="num">'+fmt(tTot)+'</td><td></td><td class="num">'+fmt(tOut)+'</td><td colspan="3"></td></tr>'+
     rows.slice(0,100).map(function(x){
       var o=outst(x), paid=(x.total||0)-o;
-      return '<tr class="clk" onclick="FIN.openDaily(\''+x.id+'\')"><td>'+esc(x.date)+((x.recog&&x.recog!==x.date)?'<br><span class="fx-mini" style="color:#16324f;font-weight:700">'+jt('매출 ','销售 ')+esc(x.recog)+'</span>':'')+'</td><td>'+esc(x.client||'-')+'</td>'+
+      return '<tr class="clk" onclick="FIN.openDaily(\''+x.id+'\')"><td>'+esc(x.date)+((x.recog&&x.recog!==x.date)?'<br><span class="fx-mini" style="color:#16324f;font-weight:700">'+jt('매출 ','销售 ')+esc(x.recog)+'</span>':'')+'</td><td>'+(x.client?'<span style="color:#2563eb;cursor:pointer;border-bottom:1px dotted #93b5e8" title="거래처 360° 상세" onclick="event.stopPropagation();if(window.CRM&&CRM._openClient)CRM._openClient(decodeURIComponent(&quot;'+encodeURIComponent(x.client)+'&quot;))">'+esc(x.client)+'</span>':'-')+'</td>'+
         '<td style="white-space:normal;max-width:330px">'+esc(x.product)+'</td>'+
         '<td><span class="fx-badge '+(x.cat==='기기'?'fb-info':x.cat==='소모품'?'fb-ok':'fb-gray')+'">'+esc(x.cat||'-')+'</span></td>'+
         '<td class="num">'+(x.qty||1)+'</td><td class="num">'+fmt(x.total)+'</td><td class="num" style="color:#059669">'+fmt(paid)+'</td>'+
@@ -7960,7 +7960,7 @@ function renderAssets(){
   if(_asset==='Demo'){
     $('fxAHead').innerHTML='<tr><th>제품</th><th>S/N</th><th class="num">수량</th><th>입고일</th><th>데모 거래처</th><th>Rank</th><th>비고</th><th></th></tr>';
     $('fxABody').innerHTML=list.map(function(x){
-      return '<tr class="clk" onclick="FIN.openAsset(\''+x.id+'\')"><td>'+esc(x.product)+'</td><td>'+esc(x.sn)+'</td><td class="num">'+(x.qty||1)+'</td><td>'+esc(x.inDate||'-')+'</td><td>'+esc(x.client||'-')+'</td>'+
+      return '<tr class="clk" onclick="FIN.openAsset(\''+x.id+'\')"><td>'+esc(x.product)+'</td><td>'+esc(x.sn)+'</td><td class="num">'+(x.qty||1)+'</td><td>'+esc(x.inDate||'-')+'</td><td>'+(x.client?'<span style="color:#2563eb;cursor:pointer;border-bottom:1px dotted #93b5e8" title="거래처 360° 상세" onclick="event.stopPropagation();if(window.CRM&&CRM._openClient)CRM._openClient(decodeURIComponent(&quot;'+encodeURIComponent(x.client)+'&quot;))">'+esc(x.client)+'</span>':'-')+'</td>'+
       '<td>'+(x.rank?'<span class="fx-badge '+(x.rank==='A'?'fb-ok':x.rank==='C'?'fb-gray':'fb-warn')+'">'+esc(x.rank)+'</span>':'')+'</td><td style="white-space:normal">'+esc(x.note||'')+'</td>'+
       '<td><button class="fx-btn sm red" onclick="event.stopPropagation();FIN.delAsset(\''+x.id+'\')">삭제</button></td></tr>';}).join('');
   }else{

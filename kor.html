@@ -1024,6 +1024,13 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
       <button onclick="collapseAllDepts()" style="background:#f8fafc;border:1px solid #dbe3ec;border-radius:8px;padding:8px 12px;font-size:12px;color:#475569;cursor:pointer"><i class="bi bi-chevron-up me-1"></i>모두 접기</button>
       <button onclick="expandAllDepts()" style="background:#f8fafc;border:1px solid #dbe3ec;border-radius:8px;padding:8px 12px;font-size:12px;color:#475569;cursor:pointer"><i class="bi bi-chevron-down me-1"></i>모두 펼치기</button>
     </div>
+    <style>
+    /* 사용자 관리 표 — 다크 관리자에서 이식된 잔재 컨트롤을 라이트 테마로 강제(역할·권한 드롭다운 글자 안보임 해소) */
+    #admin-user-list select{background:#fff!important;color:#0f172a!important;border-color:#dbe3ec!important}
+    #admin-user-list option{background:#fff!important;color:#0f172a!important}
+    #admin-user-list span[data-pw]{color:#334155!important}
+    #admin-user-list tr{border-color:#eef2f7!important}
+    </style>
         <div style="background:#fafbfc;border:1px solid #e4e8ef;border-radius:16px;overflow:auto">
       <table style="width:100%;border-collapse:collapse;min-width:900px">
         <thead><tr style="border-bottom:1px solid #e4e8ef">
@@ -11754,7 +11761,7 @@ function _deptCtl(dept){
   const dq=(dept||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const cur=_deptPerms[dept]?_matchPreset(_deptPerms[dept]):'';
   const opts=`<option value="">— 미설정 —</option>`+PERM_PRESETS.map(ps=>`<option ${ps.name===cur?'selected':''}>${ps.name}</option>`).join('');
-  return `<span style="float:right;display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()"><span style="font-size:10px;color:#64748b">기본권한</span><select onchange="setDeptDefault('${dq}',this.value)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:2px 5px;font-size:10px;color:#cbd5e1">${opts}</select><button onclick="applyDeptToAll('${dq}')" style="background:rgba(13,148,136,.18);border:1px solid rgba(13,148,136,.3);color:#5eead4;padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer">전원적용</button></span>`;
+  return `<span style="float:right;display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()"><button onclick="renameDept('${dq}')" style="background:#eef4ff;border:1px solid #c7dbff;color:#1d4ed8;padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer" title="이 부서 소속 전원의 부서명을 한 번에 변경"><i class="bi bi-pencil-square me-1"></i>부서명 변경</button><span style="font-size:10px;color:#64748b">기본권한</span><select onchange="setDeptDefault('${dq}',this.value)" style="background:#fff;border:1px solid #dbe3ec;border-radius:5px;padding:2px 5px;font-size:10px;color:#0f172a">${opts}</select><button onclick="applyDeptToAll('${dq}')" style="background:rgba(13,148,136,.14);border:1px solid rgba(13,148,136,.35);color:#0f766e;padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer">전원적용</button></span>`;
 }
 async function setDeptDefault(dept, name){
   const ps=PERM_PRESETS.find(x=>x.name===name);
@@ -11775,6 +11782,23 @@ async function applyDeptToAll(dept){
     p.access=dp.access; p.upload=dp.upload;
   }
   showToast(dept+' 전원 적용 완료 ('+members.length+'명)', true);
+  _paintUsers();
+}
+// 부서명 일괄 변경 — 이 부서 소속 전원의 crm_profiles.dept 를 한 번에 갱신
+async function renameDept(dept){
+  if(dept==='(부서 미지정)'){ alert('미지정 그룹은 개명할 수 없습니다. 각 행의 부서 칸에 직접 입력하세요.'); return; }
+  const nn=prompt('['+dept+'] 부서명을 무엇으로 바꿀까요?', dept);
+  if(nn==null) return; const nv=nn.trim();
+  if(!nv){ alert('부서명을 입력하세요.'); return; }
+  if(nv===dept) return;
+  const members=_allProfiles.filter(p=>((p.dept||'').trim()||'(부서 미지정)')===dept);
+  if(!confirm('['+dept+'] → ['+nv+']\n소속 '+members.length+'명의 부서를 일괄 변경합니다. 진행할까요?')) return;
+  for(const p of members){
+    const {error}=await _sb.from('crm_profiles').update({dept:nv}).eq('id',p.id);
+    if(error){ showToast('변경 실패: '+error.message, true, true); return; }
+    p.dept=nv;
+  }
+  showToast('부서명 변경 완료: '+dept+' → '+nv+' ('+members.length+'명)', true);
   _paintUsers();
 }
 
@@ -12182,7 +12206,9 @@ async function renderAdminFeedback(){
 }
 
 async function updateUserField(id, field, value) {
-  await _sb.from('crm_profiles').update({[field]: value}).eq('id', id);
+  const {error}=await _sb.from('crm_profiles').update({[field]: value}).eq('id', id);
+  if(error){ showToast('저장 실패: '+error.message, true, true); return; }
+  const p=_allProfiles.find(x=>x.id===id); if(p) p[field]=value;   // 로컬 캐시도 갱신 — 재렌더 시 옛값으로 되돌아가지 않도록
   showToast('저장됨', true);
 }
 

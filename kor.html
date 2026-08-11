@@ -845,13 +845,15 @@ html body .main.main [style*="margin-top:18px"]{margin-top:12px!important}
   background:#fff;border:1px solid var(--lcl);border-radius:6px;padding:5px 10px;font-variant-numeric:tabular-nums}
 .lc-hide{display:none!important}
 
-/* ── 단일 그리드(그룹은 display:contents 로 흡수) ── */
-.lc-grid{flex:0 1 auto;min-height:0;display:grid;
+/* ── 그룹별 줄 구분(각 그룹이 자기 행을 채움, 그룹은 세로로 쌓임) ── */
+.lc-grid{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;
+  gap:20px;align-content:start;overflow-x:hidden;overflow-y:auto;padding:1px}
+.lc-grp{display:block}
+.lc-grp-t{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#8a97a8;margin:0 2px 10px;display:flex;align-items:center;gap:11px}
+.lc-grp-t::after{content:'';flex:1;height:1px;background:#e4e8ef}
+.lc-grp-row{display:grid;
   grid-template-columns:repeat(auto-fit,minmax(214px,1fr));
-  grid-auto-rows:minmax(178px,max-content);
-  gap:13px;align-content:start;overflow-x:hidden;overflow-y:auto;padding:1px}
-.lc-grp{display:contents}
-.lc-grp-row{display:contents}
+  grid-auto-rows:minmax(178px,max-content);gap:13px}
 .lc-empty{grid-column:1/-1;align-self:center;padding:26px 16px;text-align:center;font-size:12.5px;color:var(--lcm);
   border:1px dashed #c8d3e0;border-radius:10px;background:#fff}
 
@@ -3617,7 +3619,7 @@ async function init() {
 }
 
 // 런처 카테고리(키→그룹). 여기 없는 신규 키는 '기타'로 자동 표시(registry 자동반영 유지)
-const _LAUNCH_GRPS=[['매출 현황',['total','korea','kor_sales','intl','consumables']],['해외법인·수출',['us','in','cn','export']],['영업전략 도구',['daily','ar']]];
+const _LAUNCH_GRPS=[['매출 현황',['total','korea','intl']],['해외 법인',['us','in','cn']],['기타',['kor_sales','export','consumables','daily','ar']]];
 // 런처 전용 HTML 이스케이프(속성·표시 텍스트용). body_html 은 계약상 HTML이라 원문 유지.
 function _lcEsc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // 헤더 정보 스트립 채우기(오늘 날짜 · 접속 계정 · 이용 가능 시스템 수) — 표시 전용, 실패해도 런처는 그대로 동작
@@ -3683,10 +3685,10 @@ function _buildLauncherCardsHTML(access) {
   _LAUNCH_GRPS.forEach(([label,keys])=>{
     const sites=keys.map(k=>vis.find(s=>s.key===k)).filter(Boolean);
     sites.forEach(s=>used[s.key]=1);
-    if(sites.length)grid+=`<section class="lc-grp" data-g="${_lcEsc(label)}"><div class="lc-grp-row">${sites.map(s=>card(s,label)).join('')}</div></section>`;
+    if(sites.length)grid+=`<section class="lc-grp" data-g="${_lcEsc(label)}"><div class="lc-grp-t">${_lcEsc(label)}</div><div class="lc-grp-row">${sites.map(s=>card(s,'')).join('')}</div></section>`;
   });
   const etc=vis.filter(s=>!used[s.key]);
-  if(etc.length)grid+=`<section class="lc-grp" data-g="기타"><div class="lc-grp-row">${etc.map(s=>card(s,'기타')).join('')}</div></section>`;
+  if(etc.length)grid+=`<section class="lc-grp" data-g="기타"><div class="lc-grp-t">기타</div><div class="lc-grp-row">${etc.map(s=>card(s,'')).join('')}</div></section>`;
   html+=`<div class="lc-grid">${grid}<div id="lc-empty" class="lc-empty lc-hide">일치하는 시스템이 없습니다</div></div>`;
   return html;
 }

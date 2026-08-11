@@ -2944,16 +2944,21 @@ const _ovTgt=(f,t)=>{let s=0;(SALEST||[]).forEach(r=>{if(+r.year===2026&&+r.mont
 // 장비 vs 소모품 셀 (스코어보드용 — 다크 배경 미니바, 클릭=카테고리 조회)
 function _sbCat(d){
   const dev=Number(d.devTot)||0, cons=Number(d.consTot)||0, cd=dev+cons||1;
-  const row=(lbl,v,col)=>{ const p=Math.round(v/cd*100);
+  const _yo=(v,pv)=>{ if(!(pv>0)) return '<span style="font-size:9.5px;color:#a78bfa;font-weight:700">신규</span>';
+    const g=(v/pv-1)*100; return '<span style="font-size:9.5px;font-weight:700;color:'+(g>=0?'#4ade80':'#f87171')+'">'+(g>=0?'▲':'▼')+Math.abs(g).toFixed(0)+'%</span>'; };
+  const row=(lbl,v,pv,col,qty)=>{ const p=Math.round(v/cd*100);
     return '<div class="sb-cat clk" onclick="qGo(\'all\',\''+lbl+'\')" title="'+lbl+' 상세 조회">'+
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">'+
       '<span style="font-size:11px;font-weight:700;color:'+col+'">'+lbl+' <span style="color:#475569">›</span></span>'+
       '<span style="font-size:12px;font-weight:700;color:var(--hero-ink);font-variant-numeric:tabular-nums">'+fmtW(v)+' <span style="font-size:10px;color:var(--hero-sub);font-weight:600">'+p+'%</span></span></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px">'+
+        '<span style="font-size:9.5px;color:var(--hero-sub);font-weight:600">'+(qty>0?qty.toLocaleString()+(lbl==='장비'?'대':'개')+' · ':'')+'전년 '+fmtW(pv)+'</span>'+_yo(v,pv)+'</div>'+
       '<div style="height:5px;background:rgba(148,163,184,.22);border-radius:99px;overflow:hidden;margin-top:3px"><div style="width:'+p+'%;height:100%;border-radius:99px;background:'+col+'"></div></div></div>';
   };
   if(!(dev>0||cons>0)) return '';
-  return '<div class="sb-cell sm"><div class="sb-l"><i class="bi bi-boxes"></i>장비 vs 소모품 <span style="font-size:9.5px;color:#475569">미반영 포함</span></div>'+
-    row('장비',dev,'#7c3aed')+row('소모품',cons,'#0891b2')+'</div>';
+  return '<div class="sb-cell sm"><div class="sb-l"><i class="bi bi-boxes"></i>장비 vs 소모품 <span style="font-size:9.5px;color:#475569">미반영 포함 · 대수·전년비</span></div>'+
+    row('장비',dev,Number(d.devPrev)||0,'#7c3aed',Math.round(Number(d.devQty)||0))+
+    row('소모품',cons,Number(d.consPrev)||0,'#0891b2',Math.round(Number(d.consQty)||0))+'</div>';
 }
 function _renderScoreboard(f,t,d,prevBand){
   const host=document.getElementById('ov-hero');

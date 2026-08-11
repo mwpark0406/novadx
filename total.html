@@ -385,7 +385,8 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 .gx-fact .v{font-size:21px;font-weight:800;color:#141c28;font-variant-numeric:tabular-nums;line-height:1.1}
 .gx-sec{font-size:17px;font-weight:800;color:#141c28;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid #16324f}
 .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;align-items:start}
-@media(max-width:1520px){.gx-grid{grid-template-columns:1fr;gap:0}}
+.gx-grid>div{min-width:0;overflow-x:auto}
+@media(max-width:1680px){.gx-grid{grid-template-columns:1fr;gap:0}}
 .gx-tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .gx-tbl thead th{font-size:13.5px;font-weight:700;color:#4a5666;background:#f2f5f9;padding:8px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid #cfd9e5}
 .gx-tbl thead th.l{text-align:left}
@@ -5360,7 +5361,7 @@ setInterval(chk,5*60*1000);chk();
     if(!hits.length){ res.innerHTML='<div style="padding:26px;text-align:center;color:#94a3b8;font-size:13px">결과 없음</div>'; return; }
     res.innerHTML=hits.map(function(r,i){ return '<div class="tg-row" data-i="'+i+'" onmouseover="_tgH('+i+')" onclick="_tgGo('+i+')" style="display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer">'
       +'<span style="width:28px;height:28px;border-radius:8px;background:'+r.c+'18;color:'+r.c+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="bi '+r.ic+'"></i></span>'
-      +'<span style="flex:1;min-width:0;overflow:hidden"><span style="font-size:13.5px;font-weight:600;color:#0f172a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.n+'</span>'+(r.sub?'<span style="font-size:11px;color:#94a3b8">'+r.sub+'</span>':'')+'</span>'
+      +'<span style="flex:1;min-width:0;overflow:hidden"><span style="font-size:13.5px;font-weight:600;color:#0f172a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.n)+'</span>'+(r.sub?'<span style="font-size:11px;color:#94a3b8">'+esc(r.sub)+'</span>':'')+'</span>'
       +'<span style="font-size:10.5px;font-weight:700;color:'+r.c+';flex-shrink:0">'+r.t+'</span></div>'; }).join('');
     _tgHi();
   }

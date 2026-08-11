@@ -3518,10 +3518,13 @@ const EXEC_REGS=['동남아','중화','중동','유럽','미주','인도법인',
 // 보고 기준월(누적 상한): 기본=자동(현재 달력월 — 월 바뀌면 자동 반영), 셀렉터로 변경 가능
 window._execTsel = (typeof window._execTsel!=='undefined')?window._execTsel:null;
 function _execCalMonth(){ var n=new Date(); return n.getFullYear()<2026?1:(n.getFullYear()>2026?12:Math.min(12,n.getMonth()+1)); }
-function _execT(){ return (window._execTsel!=null)?Math.max(1,Math.min(12,window._execTsel)):_execCalMonth(); }
+// 데이터 기준일(회계 마감)로 '완결월'을 산출 — 당월은 월중이라 부분 실적이므로 목표(풀월)와 비교하면 달성률이 과소평가된다.
+// 기준일이 그 달 말일이면 해당 월까지 완결, 아니면 직전 월까지만 완결로 본다.
+function _execCompleteMonth(){ var s=String((typeof CONS!=='undefined'&&CONS.updatedAt)||(typeof DEVICE!=='undefined'&&DEVICE.updatedAt)||''); var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s); if(!m) return _execCalMonth(); var y=+m[1],mo=+m[2],d=+m[3]; if(y<2026) return 1; if(y>2026) return 12; var last=new Date(2026,mo,0).getDate(); return (d>=last)?mo:Math.max(1,mo-1); }
+function _execT(){ return (window._execTsel!=null)?Math.max(1,Math.min(12,window._execTsel)):_execCompleteMonth(); }
 var _EXEC_SEL_PAGES=['goals','units','quarters','corps'];
 function _setExecT(v){ window._execTsel=(v==='auto'||v==='')?null:parseInt(v,10); var ap=document.querySelector('.page.on'); if(!ap)return; var id=ap.id.replace('page-',''); var nav=Array.prototype.slice.call(document.querySelectorAll('.nav-link')).filter(function(a){return (a.getAttribute('onclick')||'').indexOf("'"+id+"'")>=0;})[0]; showPage(id, nav||null); }
-function _paintExecSel(name){ var host=document.getElementById('exec-sel-host'); if(!host)return; if(_EXEC_SEL_PAGES.indexOf(name)<0){ host.innerHTML=''; return; } var cal=_execCalMonth(),auto=(window._execTsel==null),cur=_execT(); var o='<option value="auto"'+(auto?' selected':'')+'>자동 · 당월(1~'+cal+'월)</option>'; for(var m=1;m<=cal;m++)o+='<option value="'+m+'"'+((!auto&&m===cur)?' selected':'')+'>1~'+m+'월</option>'; host.innerHTML='<span class="exec-sel"><i class="bi bi-calendar3 me-1"></i>보고 기간 <select onchange="_setExecT(this.value)">'+o+'</select></span>'; }
+function _paintExecSel(name){ var host=document.getElementById('exec-sel-host'); if(!host)return; if(_EXEC_SEL_PAGES.indexOf(name)<0){ host.innerHTML=''; return; } var cal=_execCalMonth(),comp=_execCompleteMonth(),auto=(window._execTsel==null),cur=_execT(); var o='<option value="auto"'+(auto?' selected':'')+'>자동 · 완결월(1~'+comp+'월)</option>'; for(var m=1;m<=cal;m++)o+='<option value="'+m+'"'+((!auto&&m===cur)?' selected':'')+'>1~'+m+'월'+(m>comp?' · 당월 부분':'')+'</option>'; host.innerHTML='<span class="exec-sel"><i class="bi bi-calendar3 me-1"></i>보고 기간 <select onchange="_setExecT(this.value)">'+o+'</select></span>'; }
 /* 절제 팔레트: 기본은 잉크색(무채색), 위험 구간만 강조 — 색 경쟁 제거 */
 const _achCol=r=> r==null?'#94a3b8' : r>=100?'#0f766e' : r>=70?'#182230' : r>=50?'#d97706':'#dc2626';
 // 진행바 전용 파스텔 톤(숫자는 _achCol 유지 — 파스텔 숫자는 가독성↓)
@@ -3577,7 +3580,9 @@ function renderGoals(){
   const iTot={act:S(intl,'act'),pnd:S(intl,'pnd'),tgt:S(intl,'tgt'),act25:S(intl,'act25')};
   // ══ 임원용 문서형 레이아웃(큰 글씨·표 중심) ══
   const _w=v=>fmtW(v);
-  let h='<div class="gx-head">'+
+  const _partial=(t>_execCompleteMonth());
+  let h=(_partial?('<div style="display:flex;gap:8px;align-items:center;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 13px;margin-bottom:12px;font-size:12px;color:#92400e"><i class="bi bi-exclamation-triangle-fill" style="color:#f59e0b"></i><span><b>'+t+'월은 데이터 기준일('+esc(CONS.updatedAt||DEVICE.updatedAt||'')+')까지 부분 실적</b>입니다. 목표는 '+t+'월 한 달 전체 기준이라 달성률이 실제보다 낮게 보일 수 있습니다. 정확한 평가는 <b>완결월(1~'+_execCompleteMonth()+'월)</b> 기준을 권장합니다.</span></div>'):'')+
+    '<div class="gx-head">'+
     '<div class="gx-head-l">전사 목표 달성률 <span class="gx-per">1~'+t+'월 누적</span></div>'+
     '<div class="gx-head-r"><span class="gx-big" style="color:'+achCol+'">'+(achC==null?'-':achC.toFixed(0)+'%')+'</span>'+
       '<span class="gx-head-s">실적 <b>'+_w(totAct)+'</b> &nbsp;/&nbsp; 목표 <b>'+_w(totTgt)+'</b></span></div></div>'+

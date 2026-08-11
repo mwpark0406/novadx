@@ -1261,6 +1261,67 @@ function renderByCountry(){
   if(prev&&arr.find(x=>x.n===prev)) ctSel.value=prev;
 
   if(ctSel.value) renderCtYoY(); else { dch('ct-yoy-chart'); document.getElementById('ct-yoy-kpi').innerHTML=''; }
+  try{ _ctCompareInit(); }catch(e){}
+}
+
+// ── 국가 A vs B 비교 위젯 (국가별 분석) ───────────────────────────────
+var _ctCmpA=null,_ctCmpB=null,_ctCmpChart=null;
+function _ctcE(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function _ctCompareInit(){
+  var page=document.getElementById('page-by-country'); if(!page) return;
+  var host=document.getElementById('ct-compare');
+  if(!host){ host=document.createElement('div'); host.id='ct-compare'; host.className='card p-3 mt-3'; page.appendChild(host); }
+  var y=+document.getElementById('ct-year').value;
+  var cur=y===2026?INTL:(INTL.data2025||{});
+  var names=Object.keys(cur.countries||{}).map(function(cc){ return {cc:cc, ko:(typeof ccKo==='function'?ccKo(cc):cc)}; }).sort(function(a,b){return a.ko.localeCompare(b.ko,'ko');});
+  var opt=function(sel){ return '<option value="">\u2014 \uad6d\uac00 \uc120\ud0dd \u2014</option>'+names.map(function(o){ return '<option value="'+o.cc+'"'+(sel===o.cc?' selected':'')+'>'+o.ko+'</option>'; }).join(''); };
+  host.innerHTML='<div style="font-size:13.5px;font-weight:800;margin-bottom:9px"><i class="bi bi-bar-chart-steps me-1" style="color:#0891b2"></i>\uad6d\uac00 \ube44\uad50 <span style="font-size:11px;font-weight:500;color:#94a3b8">\u00b7 \ub450 \uad6d\uac00\ub97c \uace8\ub77c \ub098\ub780\ud788 \ube44\uad50</span></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'+
+    '<select id="ct-cmp-a" class="form-select form-select-sm" style="max-width:200px" onchange="_ctCmpPick()">'+opt(_ctCmpA)+'</select>'+
+    '<span style="color:#94a3b8;font-weight:700">vs</span>'+
+    '<select id="ct-cmp-b" class="form-select form-select-sm" style="max-width:200px" onchange="_ctCmpPick()">'+opt(_ctCmpB)+'</select></div>'+
+    '<div id="ct-cmp-out"></div>';
+  _ctCmpDraw();
+}
+function _ctCmpPick(){ _ctCmpA=document.getElementById('ct-cmp-a').value||null; _ctCmpB=document.getElementById('ct-cmp-b').value||null; _ctCmpDraw(); }
+function _ctData(cc){
+  var y=+document.getElementById('ct-year').value, f=+document.getElementById('ct-from').value, t=+document.getElementById('ct-to').value;
+  var cur=y===2026?INTL:(INTL.data2025||{}), pre=y===2026?(INTL.data2025||{}):null;
+  var c=(cur.countries||{})[cc]||{}, cp=pre?(pre.countries||{})[cc]:null;
+  var qmap=(typeof _intlCtryQty==='function')?_intlCtryQty(cur,f,t):{};
+  return { v:(typeof ytd==='function'?ytd(c.m,f,t):0), pv:(cp&&typeof ytd==='function')?ytd(cp.m,f,t):0,
+    q:qmap[cc]||0, clients:c.clients||Object.keys(c.clientData||{}).length, m26:c.m||{}, m25:(cp&&cp.m)||{}, ko:(typeof ccKo==='function'?ccKo(cc):cc), fi:(typeof ccFI==='function'?ccFI(cc):'') };
+}
+function _ctCmpDraw(){
+  var out=document.getElementById('ct-cmp-out'); if(!out) return;
+  if(!_ctCmpA||!_ctCmpB){ out.innerHTML='<div style="padding:14px;text-align:center;color:#94a3b8;font-size:12.5px">\ub450 \uad6d\uac00\ub97c \uc120\ud0dd\ud558\uba74 \ub9e4\ucd9c\u00b7\uc804\ub144\ube44\u00b7\uac70\ub798\ucc98\u00b7\ub300\uc218\ub97c \ub098\ub780\ud788 \ube44\uad50\ud569\ub2c8\ub2e4.</div>'; if(_ctCmpChart){_ctCmpChart.destroy();_ctCmpChart=null;} return; }
+  var A=_ctData(_ctCmpA), B=_ctData(_ctCmpB);
+  var yA=A.pv>0?((A.v/A.pv-1)*100):null, yB=B.pv>0?((B.v/B.pv-1)*100):null;
+  var pctS=function(v){ return v===null?'\uc2e0\uaddc':((v>=0?'\u25b2':'\u25bc')+Math.abs(v).toFixed(0)+'%'); };
+  var col=function(v){ return v===null?'#7c3aed':(v>=0?'#16a34a':'#dc2626'); };
+  var met=function(lbl,va,vb,fmt){ var better=va>=vb, f2=fmt||fmtW;
+    return '<tr><td style="padding:6px 10px;color:#64748b;font-size:12px">'+lbl+'</td>'+
+      '<td style="padding:6px 10px;text-align:right;font-weight:'+(better?'800':'600')+';color:'+(better?'#0891b2':'#334155')+'">'+f2(va)+(better?' <i class="bi bi-caret-up-fill" style="font-size:9px;color:#16a34a"></i>':'')+'</td>'+
+      '<td style="padding:6px 10px;text-align:right;font-weight:'+(!better?'800':'600')+';color:'+(!better?'#c026d3':'#334155')+'">'+f2(vb)+(!better?' <i class="bi bi-caret-up-fill" style="font-size:9px;color:#16a34a"></i>':'')+'</td></tr>'; };
+  var tbl='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    '<th style="padding:6px 10px;text-align:left;font-size:11px;color:#94a3b8">\uc9c0\ud45c</th>'+
+    '<th style="padding:6px 10px;text-align:right"><span style="color:#0891b2">'+A.fi+' '+_ctcE(A.ko)+'</span></th>'+
+    '<th style="padding:6px 10px;text-align:right"><span style="color:#c026d3">'+B.fi+' '+_ctcE(B.ko)+'</span></th></tr></thead><tbody>'+
+    met('\ub9e4\ucd9c',A.v,B.v)+
+    '<tr><td style="padding:6px 10px;color:#64748b;font-size:12px">\uc804\ub144\ube44</td><td style="padding:6px 10px;text-align:right;font-weight:700;color:'+col(yA)+'">'+pctS(yA)+'</td><td style="padding:6px 10px;text-align:right;font-weight:700;color:'+col(yB)+'">'+pctS(yB)+'</td></tr>'+
+    met('\uac70\ub798\ucc98',A.clients,B.clients,function(v){return v+'\uac1c';})+
+    met('\ub300\uc218',A.q,B.q,function(v){return (v||0).toLocaleString()+'\ub300';})+
+    '</tbody></table>';
+  out.innerHTML='<div style="overflow-x:auto">'+tbl+'</div>'+
+    '<div style="margin-top:10px"><div style="font-size:11px;color:#94a3b8;margin-bottom:4px">\uc6d4\ubcc4 \ub9e4\ucd9c \ucd94\uc774</div><div style="position:relative;height:180px"><canvas id="ct-cmp-canvas"></canvas></div></div>';
+  var m12=Array.from({length:12},function(_,i){return i+1;});
+  var da=m12.map(function(m){return +(((A.m26&&A.m26[m])||0)/1e8).toFixed(2);});
+  var db=m12.map(function(m){return +(((B.m26&&B.m26[m])||0)/1e8).toFixed(2);});
+  if(_ctCmpChart){_ctCmpChart.destroy();}
+  _ctCmpChart=new Chart(document.getElementById('ct-cmp-canvas'),(typeof _yFit==='function'?_yFit:function(x){return x;})({type:'bar',data:{labels:m12.map(function(m){return m+'\uc6d4';}),datasets:[
+    {label:A.ko,data:da,backgroundColor:'rgba(8,145,178,0.8)',borderRadius:3},
+    {label:B.ko,data:db,backgroundColor:'rgba(192,38,211,0.75)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:9,font:{size:10}}},tooltip:{callbacks:{label:function(c){return c.dataset.label+': '+(c.parsed.y||0)+'\uc5b5';}}}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f3f4f6'},ticks:{callback:function(v){return v+'\uc5b5';}}}}}}));
 }
 
 function selectCountry(n){

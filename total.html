@@ -540,7 +540,7 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 .exec-narr b.up{color:#16a34a;font-weight:800}.exec-narr b.dn{color:#e11d48;font-weight:800}
 /* 1fr 은 min-content 가 바닥이라 좁은 칸에 들어가면 열이 넘친다 — minmax(0,1fr) 필수 */
 .dual-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
-@media(max-width:1100px){.dual-grid{grid-template-columns:1fr}}
+@media(max-width:1100px){.dual-grid{grid-template-columns:minmax(0,1fr)}}
 .dl-h{font-size:12.5px;font-weight:800;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #f1f5f9}
 .dl-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #f5f7fa;font-size:12.5px}
 .dl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}

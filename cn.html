@@ -589,6 +589,26 @@ body{font-family:'Noto Sans KR','Noto Sans SC','Pretendard','Pretendard Variable
 .btn-outline-secondary:hover,.btn-outline-secondary:focus{background:#eff4fb;border-color:#a9c4e8;color:var(--blue)}
 .btn-primary{background:var(--blue);border-color:var(--blue)}
 .btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+/* 전년비 병기(작년 N대 → 올해 N대) 텍스트: 좁은 화면에선 줄바꿈 허용 */
+@media(max-width:820px){[style*="flex-shrink:0;white-space:nowrap"]{white-space:normal!important;flex-shrink:1!important;min-width:0}
+  /* 넓은 표 패널은 내부 가로 스크롤로 격리(페이지 가로 넘침 방지) */
+  .esdl,.escard{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* 인라인 다열(3~6) 타일 그리드 → 2열 축소, 셀 내용은 줄바꿈 */
+  .content [style*="grid-template-columns:repeat(3,1fr)"],
+  .content [style*="grid-template-columns:repeat(4,1fr)"],
+  .content [style*="grid-template-columns:repeat(5,1fr)"],
+  .content [style*="grid-template-columns:repeat(6,1fr)"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .content [style*="grid-template-columns:repeat("]>*{min-width:0}
+  .esc{min-width:0}
+  /* 인라인 1fr 1fr 2열(차트 짝) → 1열, 자식 축소 허용 */
+  .content [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}
+  .content [style*="grid-template-columns:1fr 1fr"]>*{min-width:0}
+  /* 자금일보: 계좌 그리드 1열 + 헤더 줄바꿈 + 차트 내부 스크롤 */
+  .finpage .fx-grid2>*{min-width:0}
+  .finpage .fx-acct-grid{grid-template-columns:1fr}
+  .finpage .fx-st{flex-wrap:wrap}
+  .finpage .fx-bar{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
 </style>
 
 <script>/* WT_ERRLOG_V1 — 공통 오류수집+요청함 (자동주입 스니펫, 개별 수정 금지) */

@@ -372,6 +372,13 @@ td.empty::before,.card>.empty::before{content:'';display:block;width:34px;height
   .combo .mcol{flex:0 0 auto;min-width:26px}
   /* 480px 고정 카드 그리드 → 폭에 맞춰 1열 */
   .cgrid{grid-template-columns:repeat(auto-fill,minmax(min(480px,100%),1fr))!important}
+  /* 카드 내부 2열 그리드 자식이 min-content로 부풀지 않도록 */
+  .dash2col>*{min-width:0}
+  /* 자금 요약 등 인라인 3열 그리드: 셀 축소 허용 + 큰 숫자 축소 */
+  .wrap [style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+  .wrap [style*="grid-template-columns:repeat(3,1fr)"] [style*="font-size:20px"]{font-size:15px}
+  /* 전년비 병기(작년 N대 → 올해 N대) 텍스트: 좁은 화면에선 줄바꿈 허용 */
+  .wrap [style*="flex-shrink:0;white-space:nowrap"]{white-space:normal!important;flex-shrink:1!important;min-width:0}
   /* 인라인 repeat(N,1fr) 그리드가 min-content로 부풀지 않도록 2열 축소 */
   .wrap [style*="grid-template-columns:repeat(4,1fr)"],
   .wrap [style*="grid-template-columns:repeat(5,1fr)"],

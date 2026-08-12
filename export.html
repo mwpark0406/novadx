@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<style>html{color-scheme:light}</style>
 <title>노바진단 · 해외수출 관리</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%232563eb'/><g transform='translate(13,36) scale(0.144)' fill='%23fff'><rect width='110' height='110' rx='28'/><rect x='204' width='110' height='110' rx='28'/><rect x='408' width='110' height='110' rx='28'/><rect x='102' y='97' width='110' height='110' rx='28'/><rect x='306' y='97' width='110' height='110' rx='28'/></g></svg>">
 <link rel="preconnect" href="https://bdkurlqmfsswgeiujyev.supabase.co" crossorigin>
@@ -205,7 +207,7 @@ canvas{max-height:185px}
 .rpt .num{text-align:right}
 @media print{body>*{display:none!important}body{display:block!important;background:#fff!important}#printHost{display:block!important;margin:0}}
 @media(max-width:1150px){.grid2{grid-template-columns:1fr}.kb{grid-template-columns:repeat(2,1fr)}.cdud .cdud-kpis{flex-wrap:wrap}.cdud .cdud-fact{min-width:44%;padding:8px 14px}}
-@media(max-width:760px){.sidebar{width:62px}.sidebar-brand b,.sidebar-brand small,.sidebar .nav-link span,.nav-label,.sidebar-footer{display:none}.sidebar .nav-link{justify-content:center}.sidebar .nav-link .cnt{display:none}.main-content{margin-left:62px;padding:16px}.kb{grid-template-columns:1fr}.cdud{padding:16px 15px}}
+@media(max-width:760px){.kb{grid-template-columns:1fr}.cdud{padding:16px 15px}}
 
 
 
@@ -406,6 +408,28 @@ table{font-variant-numeric:tabular-nums}
   .main-content{padding:60px 12px 16px}
   .cdud{padding:14px 14px}
   .rpt{padding:15px 15px}
+}
+/* 7. 모바일 상단바 2단 재배치 — 1단 브랜드+도구, 2단 메뉴(가로 스크롤).
+      단일 54px 바에선 도구 모음이 공간을 다 차지해 메뉴가 0px로 붕괴하던 것 수정 */
+@media screen and (max-width:760px){
+  .sidebar{flex-wrap:wrap;height:auto;padding:0 12px}
+  .sidebar-brand{height:48px;border-right:none;padding-right:8px}
+  .sidebar-footer{height:48px;margin-left:auto}
+  .nav-section{order:10;flex:1 1 100%;width:100%;height:44px;border-top:1px solid #e8eef5}
+  .nav-section .nav-link{flex:0 0 auto}
+  .main-content{padding-top:104px}
+  /* 좁은 화면에서 불필요한 도구 숨김(핵심: 알림·요청신고·내정보·로그아웃·사이트이동 유지) */
+  #histSync{display:none!important}
+  .sb-tool[onclick="window.print()"]{display:none}
+  .acct-btns .sbtn[onclick="changePw()"]{display:none}
+  .sb-user .nm{display:none}
+  .sb-user{padding:4px 6px;border-left:none;margin-left:0}
+  #notifDrop{width:min(344px,92vw)!important}
+  /* 1단에 다 들어가도록 축약: 브랜드 문구·도구 라벨·사이트이동 라벨 숨김 */
+  .sidebar-brand b,.sidebar-brand small{display:none}
+  .sb-tool span{display:none}
+  .sbtn span{display:none}
+  #site-switch-btn span{display:none}
 }
 </style>
 </head>

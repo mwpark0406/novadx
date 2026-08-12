@@ -3114,7 +3114,8 @@ function _tmAchHtml(tmo){
     const pend=_pendingAgg(2026);
     const rows=[];
     for(let m=Math.max(1,tmo-5); m<=tmo; m++){
-      const act=(CONS.monthly2026&&CONS.monthly2026[m]||0)+(DEVICE.monthly2026&&DEVICE.monthly2026[m]||0)+(INTL.monthly&&INTL.monthly[m]||0)+(CONS.etcMonthly2026&&CONS.etcMonthly2026[m]||0)
+      // 스트립(관리 합계)과 같은 축(국내+해외, 기타 사업부 제외) — 한 카드 안에서 같은 달 달성률이 두 값으로 갈리지 않게
+      const act=(CONS.monthly2026&&CONS.monthly2026[m]||0)+(DEVICE.monthly2026&&DEVICE.monthly2026[m]||0)+(INTL.monthly&&INTL.monthly[m]||0)
         +(pend.consMonthly[m]||0)+(pend.devMonthly[m]||0)+(pend.intlMonthly[m]||0);
       const tg=_monthTarget(m);
       rows.push({m:m, act:act, tg:tg, r:tg>0?act/tg*100:null});
@@ -3209,7 +3210,7 @@ function _qHeroBreak(f,t,G){
     let dev=0,cons=0;
     try{ const pm=_productMap(f,t,null);
       Object.keys(pm).forEach(function(k){ const o=pm[k], v=(o.dom||0)+(o.intl||0);
-        if(o.cat==='소모품') cons+=v; else dev+=v; });
+        if(o.cat==='소모품') cons+=v; else if(o.cat!=='기타') dev+=v; });   // 미분류(기타)는 장비로 뭉뚱그리지 않는다
     }catch(e){}
     // 전년 동기 — 2026과 같은 분류맵(제품명 기준)을 그대로 써야 축이 어긋나지 않는다
     const dom25=sumMo(CONS.monthly2025,f,t)+sumMo(DEVICE.monthly2025,f,t);
@@ -3219,7 +3220,7 @@ function _qHeroBreak(f,t,G){
     try{ const pmP=_productMapPrev(f,t), pmC=_productMap(f,t,null);
       Object.keys(pmP).forEach(function(n){ const v=(pmP[n].dom||0)+(pmP[n].intl||0);
         const cat=(pmC[n]&&pmC[n].cat)||'장비';
-        if(cat==='소모품') cons25+=v; else dev25+=v; });
+        if(cat==='소모품') cons25+=v; else if(cat!=='기타') dev25+=v; });
     }catch(e){}
     const tot=dom+intl+etc; if(!(tot>0)) return '';
     const p=v=>Math.round(v/tot*100)+'%';
@@ -3394,7 +3395,7 @@ function renderQuery(){
   if(qState.tab==='cust') _rowsHtml='<div class="qd-gh flow">'+_qCustFlow()+'</div>'+_rowsHtml;
   // 소계가 있는 축은 그룹 블록을 좌우로, 나머지는 행을 좌→우로 흘린다
   const _rowsEl=document.getElementById('q-rows');
-  _rowsEl.className=(qState.tab==='prod')?'qd-wrap':'qd-grid';
+  _rowsEl.className=(qState.tab==='prod'||qState.tab==='rep')?'qd-wrap':'qd-grid';   // 그룹 블록(qd-pair)을 쓰는 탭은 명시 그리드에 넣으면 첫 트랙에 압착된다
   const _hdEl=document.querySelector('.qd-hd'); if(_hdEl) _hdEl.className='qd-hd';
   _rowsEl.innerHTML=_rowsHtml||'<div class="text-muted" style="font-size:12px;padding:14px">데이터 없음</div>';
   const top3=G.filter(x=>x.d>0).sort((a,b)=>b.d-a.d).slice(0,3).reduce((s,x)=>s+x.d,0);
@@ -3828,7 +3829,7 @@ function renderGoals(){
     '</div>';
   // 공통 계산
   const _calc=x=>{ const actC=x.tgt>0?x.act/x.tgt*100:null, a=x.act+x.pnd, r=x.tgt>0?a/x.tgt*100:null, gap=x.tgt>0?x.act-x.tgt:null, col=_achCol(actC), bcol=_achBar(actC);
-    const rc=actC==null?0:Math.min(actC,100), rg=r==null?0:Math.min(Math.max(r-actC,0),100-rc), yoy=(x.act25>0)?pct(x.act,x.act25):null;
+    const rc=actC==null?0:Math.min(Math.max(actC,0),100), rg=r==null?0:Math.min(Math.max(r-actC,0),100-rc), yoy=(x.act25>0)?pct(x.act,x.act25):null;   // 음수 달성이 width:-x%(무효→풀바)로 보이지 않게 0 하한
     return {actC,r,gap,col,bcol,rc,rg,yoy,gapH:(gap==null?'–':(gap>=0?'초과 +'+fmtW(gap):'미달 '+fmtW(-gap))),gcol:(gap==null?'#94a3b8':gap>=0?'#16a34a':'#dc2626')}; };
   // 합계 밴드(전폭·지역 카드와 분리) — 바가 중앙 여백을 채움
   const band=(label,x)=>{ const c=_calc(x);

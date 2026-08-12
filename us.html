@@ -857,8 +857,10 @@ function vDash(){
   const wPipe=openDeals.reduce((a,d)=>a+(+d.amt||0)*(+d.prob||0)/100,0);
   const fu=(D.acts||[]).filter(a=>a.nextDate&&a.nextDate<today()&&!a.doneNext);
   const fuDeals=(D.deals||[]).filter(d=>DEAL_OPEN.includes(d.stage)&&d.next&&d.nextDate&&d.nextDate<today());
-  // 제품 Top5 (기간)
-  const byPrY={};pSales.forEach(x=>{if(x.product)byPrY[x.product]=(byPrY[x.product]||0)+(+x.amt||0);});
+  // 제품 Top5 (기간) — 작년 N대 얼마 → 올해 N대 얼마 병기(전년 = 같은 기간 −1년)
+  const _yAgo=d=>{const y=+String(d).slice(0,4);return (y-1)+String(d).slice(4);};
+  const byPrY={},byPrQ={};pSales.forEach(x=>{if(x.product){byPrY[x.product]=(byPrY[x.product]||0)+(+x.amt||0);byPrQ[x.product]=(byPrQ[x.product]||0)+(+x.qty||0);}});
+  const byPrP={},byPrPQ={};(D.sales||[]).filter(s=>_inR(s.date,_yAgo(PQ.from),_yAgo(PQ.to))).forEach(x=>{if(x.product){byPrP[x.product]=(byPrP[x.product]||0)+(+x.amt||0);byPrPQ[x.product]=(byPrPQ[x.product]||0)+(+x.qty||0);}});
   const topPr=Object.entries(byPrY).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxPr=Math.max(1,...topPr.map(x=>x[1]));
   const itemsN=(D.items||[]).length;
@@ -935,7 +937,7 @@ function vDash(){
         ${itemsN?(D.items||[]).map(i=>{const q=itemQty(i.name);const sf=+i.safety||0;const lo=q<sf;const ratio=sf?Math.min(100,q/sf*100):100;
           return `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><b style="color:var(--ink)">${trUser(i.name)}</b><span style="font-weight:700;color:${lo?'var(--bad)':'var(--body)'}">${q}${trUser(i.unit)}${lo?' ⚠':''}</span></div><div class="bar" style="background:#f1f5f9"><i style="width:${ratio}%;background:${lo?'var(--bad)':'#22c55e'}"></i></div><div style="font-size:10px;color:var(--muted);margin-top:2px">${jt('안전재고','safety')} ${sf}${trUser(i.unit)}</div></div>`;}).join(''):`<div class="empty">${jt('등록된 품목 없음','No items')}</div>`}</div>
       <div><div class="sect"><span><i class="bi bi-bar-chart-line"></i> ${jt('제품 Top5 (연간 매출)','Top 5 Products (YTD)')}</span></div>
-        ${topPr.length?topPr.map(([p,v])=>`<div onclick="openProduct('${esc(p).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:130px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(p)}</div><div class="bar" style="flex:1"><i style="width:${v/maxPr*100}%"></i></div><div style="width:76px;text-align:right;font-size:11.5px;font-weight:700">${fmS(v)}</div></div>`).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
+        ${topPr.length?topPr.map(([p,v])=>{const q=byPrQ[p]||0,pv=byPrP[p]||0,pq=byPrPQ[p]||0;return `<div onclick="openProduct('${esc(p).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:110px;flex-shrink:0;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(p)}</div><div class="bar" style="flex:1;min-width:30px"><i style="width:${v/maxPr*100}%"></i></div><div style="text-align:right;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">${pv>0?jt('작년 ','LY ')+(pq?pq.toLocaleString()+jt('대 ','u '):'')+fmS(pv):jt('신규','new')}</span> <span style="color:#cbd5e1">→</span> ${jt('올해 ','TY ')}${q?q.toLocaleString()+jt('대 ','u '):''}${fmS(v)}</div></div>`;}).join(''):'<div class="empty">'+jt('매출 데이터 없음','No sales data')+'</div>'}</div>
   </div></div>
   <div class="card" style="margin-bottom:14px"><div class="sect"><span><i class="bi bi-bar-chart-line"></i> 월별 매출 vs 수금 <span class="muted" style="font-weight:500;font-size:11.5px">막대=매출(진), 수금(연) · 점선=목표</span></span><span class="muted" style="font-size:12px">${yr}년</span></div><div class="combo">${combo}</div></div>
     <div class="card" style="margin-bottom:14px"><div class="sect"><span><i class="bi bi-bullseye"></i> 딜 파이프라인 <span class="muted" style="font-weight:500;font-size:11.5px">CRM · 클릭 → 칸반</span></span><span class="muted" style="font-size:12px;cursor:pointer" onclick="setView('pipe')">전체 →</span></div>
@@ -1185,15 +1187,20 @@ function _cliTrend(sales){
     <div style="display:flex;gap:3px;padding-top:4px">${bars}</div></div>`;
 }
 function _cliProds(sales){
-  const by={}; sales.forEach(s=>{ if(s.product) by[s.product]=(by[s.product]||0)+(+s.amt||0); });
+  // 작년/올해 분리 집계 — '작년 N대 얼마 → 올해 N대 얼마' 병기
+  const yNow=new Date().getFullYear();
+  const by={},byQ={},byP={},byPQ={};
+  sales.forEach(s=>{ if(!s.product) return; const y=+String(s.date||'').slice(0,4);
+    if(y===yNow){ by[s.product]=(by[s.product]||0)+(+s.amt||0); byQ[s.product]=(byQ[s.product]||0)+(+s.qty||0); }
+    else if(y===yNow-1){ byP[s.product]=(byP[s.product]||0)+(+s.amt||0); byPQ[s.product]=(byPQ[s.product]||0)+(+s.qty||0); } });
   const arr=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
   if(!arr.length) return '';
   const mx=arr[0][1]||1, tot=Object.values(by).reduce((a,b)=>a+b,0)||1;
-  return `<div class="dwcard"><div class="sect"><span>📦 제품 구성 Top ${arr.length}</span></div>`+
-    arr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
-      <span style="width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</span>
-      <div style="flex:1;height:7px;background:var(--line,#eef2f7);border-radius:4px;overflow:hidden"><div style="width:${(v/mx*100).toFixed(0)}%;height:100%;background:var(--pri,#2563eb)"></div></div>
-      <b style="width:74px;text-align:right">${fm(v)}</b><span class="muted" style="width:38px;text-align:right;font-size:11px">${(v/tot*100).toFixed(0)}%</span></div>`).join('')+`</div>`;
+  return `<div class="dwcard"><div class="sect"><span>📦 제품 구성 Top ${arr.length} <span class="muted" style="font-weight:500;font-size:11px">· 올해 기준</span></span></div>`+
+    arr.map(([p,v])=>{const q=byQ[p]||0,pv=byP[p]||0,pq=byPQ[p]||0;return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
+      <span style="width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</span>
+      <div style="flex:1;min-width:30px;height:7px;background:var(--line,#eef2f7);border-radius:4px;overflow:hidden"><div style="width:${(v/mx*100).toFixed(0)}%;height:100%;background:var(--pri,#2563eb)"></div></div>
+      <span style="text-align:right;flex-shrink:0;white-space:nowrap;font-size:11px"><span class="muted">${pv>0?'작년 '+(pq?pq.toLocaleString()+'대 ':'')+fm(pv):'신규'}</span> <span style="color:#cbd5e1">→</span> <b>올해 ${q?q.toLocaleString()+'대 ':''}${fm(v)}</b></span><span class="muted" style="width:34px;text-align:right;font-size:11px">${(v/tot*100).toFixed(0)}%</span></div>`;}).join('')+`</div>`;
 }
 function openClient(name){
   const sales=(D.sales||[]).filter(s=>s.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -2140,10 +2147,14 @@ function vReport(){
   var actsM=(D.acts||[]).filter(function(a){return _inR(a.date,PQ.from,PQ.to);});
   var ordersM=(D.orders||[]).filter(function(o){return _inR(o.date,PQ.from,PQ.to);});
   var pOut=pS.reduce(function(a,s){return a+outAmt(s);},0);
-  // 제품별·거래처별
-  var byPr={};pS.forEach(function(s){if(s.product)byPr[s.product]=(byPr[s.product]||0)+(+s.amt||0);});
+  // 제품별·거래처별 — 작년(같은 기간 −1년) 병기용 집계 포함
+  var _yAgoR=function(d){var y=+String(d).slice(0,4);return (y-1)+String(d).slice(4);};
+  var pSPrev=(D.sales||[]).filter(function(s){return _inR(s.date,_yAgoR(PQ.from),_yAgoR(PQ.to));});
+  var byPr={},byPrQ={};pS.forEach(function(s){if(s.product){byPr[s.product]=(byPr[s.product]||0)+(+s.amt||0);byPrQ[s.product]=(byPrQ[s.product]||0)+(+s.qty||0);}});
+  var byPrP={},byPrPQ={};pSPrev.forEach(function(s){if(s.product){byPrP[s.product]=(byPrP[s.product]||0)+(+s.amt||0);byPrPQ[s.product]=(byPrPQ[s.product]||0)+(+s.qty||0);}});
   var prArr=Object.entries(byPr).sort(function(a,b){return b[1]-a[1];});var maxPr=Math.max(1,...prArr.map(function(x){return x[1];}));
   var byCl={};pS.forEach(function(s){byCl[s.client]=(byCl[s.client]||0)+(+s.amt||0);});
+  var byClP={};pSPrev.forEach(function(s){byClP[s.client]=(byClP[s.client]||0)+(+s.amt||0);});
   var clArr=Object.entries(byCl).sort(function(a,b){return b[1]-a[1];});var maxCl=Math.max(1,...clArr.map(function(x){return x[1];}));
   // 매출 명세
   var det=pS.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
@@ -2168,8 +2179,8 @@ function vReport(){
         <div class="kpi"><div class="v">${actsM.length}</div><div class="l">${jt('영업 활동','Activities')}</div></div>
       </div>
       <div class="grid dash2col" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
-        <div class="card"><div class="sect"><span><i class="bi bi-box-seam"></i> ${jt('제품별 매출','Revenue by Product')}</span><span class="muted" style="font-size:11px">${jt('클릭 → 제품 상세','click for detail')}</span></div>${prArr.length?prArr.slice(0,8).map(function(x){return `<div onclick="openProduct('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:130px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(x[0])}</div><div class="bar" style="flex:1"><i style="width:${x[1]/maxPr*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>'}</div>
-        <div class="card"><div class="sect"><span><i class="bi bi-building"></i> ${jt('거래처별 매출','Revenue by Client')}</span><span class="muted" style="font-size:11px">${jt('클릭 → 거래처 상세','click for detail')}</span></div>${clArr.length?clArr.slice(0,8).map(function(x){return `<div onclick="openClient('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:150px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(x[0])}</div><div class="bar" style="flex:1"><i style="width:${x[1]/maxCl*100}%"></i></div><div style="width:80px;text-align:right;font-size:12px;font-weight:700">${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>'}</div>
+        <div class="card"><div class="sect"><span><i class="bi bi-box-seam"></i> ${jt('제품별 매출','Revenue by Product')}</span><span class="muted" style="font-size:11px">${jt('클릭 → 제품 상세','click for detail')}</span></div>${prArr.length?prArr.slice(0,8).map(function(x){var q=byPrQ[x[0]]||0,pv=byPrP[x[0]]||0,pq=byPrPQ[x[0]]||0;return `<div onclick="openProduct('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:110px;flex-shrink:0;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(x[0])}</div><div class="bar" style="flex:1;min-width:30px"><i style="width:${x[1]/maxPr*100}%"></i></div><div style="text-align:right;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">${pv>0?jt('작년 ','LY ')+(pq?pq.toLocaleString()+jt('대 ','u '):'')+fm(pv):jt('신규','new')}</span> <span style="color:#cbd5e1">→</span> ${jt('올해 ','TY ')}${q?q.toLocaleString()+jt('대 ','u '):''}${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>'}</div>
+        <div class="card"><div class="sect"><span><i class="bi bi-building"></i> ${jt('거래처별 매출','Revenue by Client')}</span><span class="muted" style="font-size:11px">${jt('클릭 → 거래처 상세','click for detail')}</span></div>${clArr.length?clArr.slice(0,8).map(function(x){var pv=byClP[x[0]]||0;return `<div onclick="openClient('${esc(x[0]).replace(/'/g,'&#39;')}')" style="display:flex;align-items:center;gap:9px;padding:5px 0;cursor:pointer"><div style="width:130px;flex-shrink:0;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dotted #cbd5e1">${esc(x[0])}</div><div class="bar" style="flex:1;min-width:30px"><i style="width:${x[1]/maxCl*100}%"></i></div><div style="text-align:right;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">${pv>0?jt('작년 ','LY ')+fm(pv):jt('신규','new')}</span> <span style="color:#cbd5e1">→</span> ${jt('올해 ','TY ')}${fm(x[1])}</div></div>`;}).join(''):'<div class="empty">'+jt('매출 없음','No sales')+'</div>'}</div>
       </div>
       <div class="card" style="padding:0;overflow:auto"><div class="sect" style="padding:15px 18px 6px"><span><i class="bi bi-receipt"></i> ${jt('매출 명세','Sales Detail')} <span class="muted" style="font-weight:500;font-size:11px">${det.length}${jt('건 · 행 클릭 → 수금내역',' · click row for collections')}</span></span></div>
         <table><thead><tr><th class="l">${jt('인식일','Date')}</th><th class="l">${jt('거래처','Client')}</th><th class="l">${jt('제품','Product')}</th><th>${jt('수량','Qty')}</th><th>${jt('매출','Revenue')}</th><th>${jt('수금','Collected')}</th><th>${jt('미수','AR')}</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;

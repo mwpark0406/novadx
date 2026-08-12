@@ -4482,8 +4482,32 @@ function openDrill(opts){
   var _mk=Object.keys(_bM).sort(),_mmax=1;_mk.forEach(function(k){if(_bM[k].a>_mmax)_mmax=_bM[k].a;});
   var _mHtml=_mk.map(function(k){var w=Math.round(_bM[k].a/_mmax*100);return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;margin:4px 0"><span style="width:52px;color:#64748b">'+k+'</span><div style="flex:1;background:#f1f5f9;border-radius:3px;height:8px"><div style="width:'+w+'%;height:100%;background:#16324f;border-radius:3px"></div></div><span style="width:92px;text-align:right;font-weight:600">'+_amt(_bM[k].a)+'</span><span style="width:34px;text-align:right;color:#94a3b8">'+_bM[k].c+(zh?'件':'건')+'</span></div>';}).join('');
   var _byFac=(opts.product!=null||opts.ym!=null),_grp=_byFac?_bF:_bP,_gttl=_byFac?(zh?'主要客户':'상위 거래처'):(zh?'主要产品':'상위 제품');
+  // 전년(같은 조건 −1년) 집계 — '작년 N대 얼마 → 올해 N대 얼마' 병기 (연도/월 필터가 있을 때만)
+  var _gQ={}; rows.forEach(function(o){var k=_byFac?(o.facility||'-'):(o.product||'-');_gQ[k]=(_gQ[k]||0)+(o.qty||0);});
+  var _gP={},_gPQ={},_hasPrev=false;
+  (function(){
+    var pYm=null,pYear=null;
+    if(opts.ym!=null){ var y=+String(opts.ym).slice(0,4); if(y)pYm=(y-1)+String(opts.ym).slice(4); }
+    else if(opts.year){ var y2=+opts.year; if(y2)pYear=String(y2-1); }
+    if(!pYm&&!pYear) return;
+    _hasPrev=true;
+    (allOrders||[]).forEach(function(o){
+      if(opts.facility!=null && o.facility!==opts.facility) return;
+      if(opts.product!=null && o.product!==opts.product) return;
+      if(opts.clinic!=null && o.clinic!==opts.clinic) return;
+      if(pYm){ if(String(o.date||'').slice(0,7)!==pYm) return; }
+      else { if(String(o.date||'').slice(0,4)!==pYear) return; }
+      var k=_byFac?(o.facility||'-'):(o.product||'-');
+      _gP[k]=(_gP[k]||0)+(o.amount||0); _gPQ[k]=(_gPQ[k]||0)+(o.qty||0);
+    });
+  })();
   var _gk=Object.keys(_grp).sort(function(a,b){return _grp[b]-_grp[a];}).slice(0,6),_gmax=_gk.length?_grp[_gk[0]]:1;
-  var _gHtml=_gk.map(function(k){var w=Math.round(_grp[k]/_gmax*100);return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;margin:4px 0"><span style="width:150px;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(k)+'</span><div style="flex:1;background:#f1f5f9;border-radius:3px;height:8px"><div style="width:'+w+'%;height:100%;background:#16324f;border-radius:3px"></div></div><span style="width:92px;text-align:right;font-weight:600">'+_amt(_grp[k])+'</span></div>';}).join('');
+  var _gHtml=_gk.map(function(k){var w=Math.round(_grp[k]/_gmax*100);
+    var q=_gQ[k]||0,pv=_gP[k]||0,pq=_gPQ[k]||0;
+    var val=_hasPrev
+      ? '<span style="text-align:right;font-weight:600;flex-shrink:0;white-space:nowrap;font-size:10.5px"><span style="color:#94a3b8">'+(pv>0?((zh?'去年 ':'작년 ')+(pq?fmt(pq)+(zh?'台 ':'대 '):'')+_amt(pv)):(zh?'新規':'신규'))+'</span> <span style="color:#cbd5e1">→</span> '+(zh?'今年 ':'올해 ')+(q?fmt(q)+(zh?'台 ':'대 '):'')+_amt(_grp[k])+'</span>'
+      : '<span style="width:92px;text-align:right;font-weight:600;flex-shrink:0">'+_amt(_grp[k])+'</span>';
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:11px;margin:4px 0"><span style="width:130px;flex-shrink:0;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(k)+'</span><div style="flex:1;min-width:30px;background:#f1f5f9;border-radius:3px;height:8px"><div style="width:'+w+'%;height:100%;background:#16324f;border-radius:3px"></div></div>'+val+'</div>';}).join('');
   var _agyTxt=(_agy>0&&tot>0)?'<div style="font-size:11px;color:#94a3b8;margin-top:8px">'+(zh?'代理店(华东/南方)':'대리점(华东/南方)')+' '+Math.round(_agy/tot*100)+'% · '+_amt(_agy)+'</div>':'';
   var _sumEl=document.getElementById('esDrillSummary'); if(_sumEl)_sumEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px">'+_kpis+'</div><div style="display:grid;grid-template-columns:1.1fr 1fr;gap:22px">'+'<div><div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">'+(zh?'月別 分布':'월별 분포')+'</div>'+(_mHtml||'<div style="color:#94a3b8;font-size:11px">-</div>')+'</div>'+'<div><div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">'+_gttl+'</div>'+(_gHtml||'<div style="color:#94a3b8;font-size:11px">-</div>')+_agyTxt+'</div></div>';
   document.getElementById('esDrillTitle').textContent=(opts.title||'')+'  ('+rows.length+(zh?'件':'건')+')';

@@ -659,7 +659,7 @@ function vDash(){
         <div style="flex:1 1 130px;min-width:0"><div class="hl">영업이익</div><div style="font-size:19px;font-weight:800;color:${opInc>=0?'#0f766e':'#dc2626'}">${fm(opInc)}</div>
           <div class="hs">${opMgn==null?'-':'이익률 '+opMgn.toFixed(1)+'%'}</div></div>
         <div style="flex:2 1 220px;min-width:0"><div class="hl">비용 구성</div>
-          ${expByCat.length?expByCat.slice(0,4).map(c=>`<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="font-size:11.5px;color:var(--body);width:56px;flex-shrink:0">${esc(c.k)}</span><div style="flex:1;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${yExp>0?(c.v/yExp*100).toFixed(1):0}%;background:#94a3b8"></i></div><span style="font-size:11px;color:var(--muted);width:52px;text-align:right">${fmS(c.v)}</span></div>`).join(''):'<div class="hs">등록된 비용 없음</div>'}
+          ${expByCat.length?expByCat.slice(0,4).map(c=>{const pv=(D.expenses||[]).filter(e=>String(e.ym||'').slice(0,4)===String(yr-1)&&(e.category||'기타')===c.k).reduce((a,e)=>a+(+e.amt||0),0);return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="font-size:11.5px;color:var(--body);width:56px;flex-shrink:0">${esc(c.k)}</span><div style="flex:1;min-width:24px;height:7px;background:#eef2f7;border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${yExp>0?(c.v/yExp*100).toFixed(1):0}%;background:#94a3b8"></i></div><span style="font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;white-space:nowrap">${pv>0?'작년 '+fmS(pv)+' <span style=\"color:#cbd5e1\">→</span> 올해 ':''}${fmS(c.v)}</span></div>`;}).join(''):'<div class="hs">등록된 비용 없음</div>'}
         </div>
       </div></div>`
     +`<div class="grid kpis">
@@ -851,15 +851,20 @@ function _cliTrend(sales){
     <div style="display:flex;gap:3px;padding-top:4px">${bars}</div></div>`;
 }
 function _cliProds(sales){
-  const by={}; sales.forEach(s=>{ if(s.product) by[s.product]=(by[s.product]||0)+(+s.amt||0); });
+  // 작년/올해 분리 집계 — '작년 N대 얼마 → 올해 N대 얼마' 병기
+  const yNow=new Date().getFullYear();
+  const by={},byQ={},byP={},byPQ={};
+  sales.forEach(s=>{ if(!s.product) return; const y=+String(s.date||'').slice(0,4);
+    if(y===yNow){ by[s.product]=(by[s.product]||0)+(+s.amt||0); byQ[s.product]=(byQ[s.product]||0)+(+s.qty||0); }
+    else if(y===yNow-1){ byP[s.product]=(byP[s.product]||0)+(+s.amt||0); byPQ[s.product]=(byPQ[s.product]||0)+(+s.qty||0); } });
   const arr=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
   if(!arr.length) return '';
   const mx=arr[0][1]||1, tot=Object.values(by).reduce((a,b)=>a+b,0)||1;
-  return `<div class="dwcard"><div class="sect"><span>📦 제품 구성 Top ${arr.length}</span></div>`+
-    arr.map(([p,v])=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
-      <span style="width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</span>
-      <div style="flex:1;height:7px;background:var(--line,#eef2f7);border-radius:4px;overflow:hidden"><div style="width:${(v/mx*100).toFixed(0)}%;height:100%;background:var(--pri,#2563eb)"></div></div>
-      <b style="width:74px;text-align:right">${fm(v)}</b><span class="muted" style="width:38px;text-align:right;font-size:11px">${(v/tot*100).toFixed(0)}%</span></div>`).join('')+`</div>`;
+  return `<div class="dwcard"><div class="sect"><span>📦 제품 구성 Top ${arr.length} <span class="muted" style="font-weight:500;font-size:11px">· 올해 기준</span></span></div>`+
+    arr.map(([p,v])=>{const q=byQ[p]||0,pv=byP[p]||0,pq=byPQ[p]||0;return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">
+      <span style="width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</span>
+      <div style="flex:1;min-width:30px;height:7px;background:var(--line,#eef2f7);border-radius:4px;overflow:hidden"><div style="width:${(v/mx*100).toFixed(0)}%;height:100%;background:var(--pri,#2563eb)"></div></div>
+      <span style="text-align:right;flex-shrink:0;white-space:nowrap;font-size:11px"><span class="muted">${pv>0?'작년 '+(pq?pq.toLocaleString()+'대 ':'')+fm(pv):'신규'}</span> <span style="color:#cbd5e1">→</span> <b>올해 ${q?q.toLocaleString()+'대 ':''}${fm(v)}</b></span><span class="muted" style="width:34px;text-align:right;font-size:11px">${(v/tot*100).toFixed(0)}%</span></div>`;}).join('')+`</div>`;
 }
 function openClient(name){
   const sales=(D.sales||[]).filter(s=>s.client===name).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -1177,8 +1182,10 @@ function vExp(){
   const L=(D.expenses||[]).slice().sort((a,b)=>(b.ym||'').localeCompare(a.ym||''));
   const cy=curYm();
   const byCat={};L.filter(e=>e.ym===cy).forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+(+e.amt||0);});
+  const cyPrev=(+cy.slice(0,4)-1)+cy.slice(4);   // 작년 같은 달 — '작년 X → 올해 X' 병기용
+  const byCatP={};L.filter(e=>e.ym===cyPrev).forEach(e=>{byCatP[e.category]=(byCatP[e.category]||0)+(+e.amt||0);});
   const mTot=Object.values(byCat).reduce((a,b)=>a+b,0);const mx=Math.max(1,...Object.values(byCat),1);
-  const catBars=EXP_CATS.map(c=>`<div onclick="expCatDw('${c}')" title="클릭하면 분류별 상세" style="display:flex;align-items:center;gap:10px;padding:5px 6px;margin:0 -6px;cursor:pointer;border-radius:7px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''"><div style="width:64px;font-size:12.5px;font-weight:600">${c}</div><div class="bar" style="flex:1"><i style="width:${(byCat[c]||0)/mx*100}%"></i></div><div style="width:100px;text-align:right;font-size:12px"><b>${fm(byCat[c]||0)}</b></div></div>`).join('');
+  const catBars=EXP_CATS.map(c=>{const pv=byCatP[c]||0;return `<div onclick="expCatDw('${c}')" title="클릭하면 분류별 상세" style="display:flex;align-items:center;gap:10px;padding:5px 6px;margin:0 -6px;cursor:pointer;border-radius:7px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''"><div style="width:64px;flex-shrink:0;font-size:12.5px;font-weight:600">${c}</div><div class="bar" style="flex:1;min-width:30px"><i style="width:${(byCat[c]||0)/mx*100}%"></i></div><div style="text-align:right;font-size:11.5px;flex-shrink:0;white-space:nowrap">${pv>0?'<span class="muted">작년 '+fm(pv)+'</span> <span style="color:#cbd5e1">→</span> 올해 ':''}<b>${fm(byCat[c]||0)}</b></div></div>`;}).join('');
   const rows=L.length?L.map(e=>`<tr onclick="mExp('${e.id}')"><td class="l">${e.ym}</td><td class="l"><span class="chip c-gray">${esc(e.category)}</span></td><td><b>${fm(e.amt)}</b></td><td class="muted" style="font-size:11.5px">${fkrw(e.amt)}</td><td class="l muted">${esc(e.memo||'')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">비용 기록 없음</td></tr>';
   return head('🧾 비용 · 인건비','월별 고정비·급여',`<button class="btn btn-primary" onclick="mExp()">+ 비용 등록</button>`)
     +`<div class="card" style="margin-bottom:14px"><div class="sect"><span>${cy} 비용 구성</span><b>${fm(mTot)} <span class="muted" style="font-size:11.5px;font-weight:500">${fkrw(mTot)}</span></b></div>${catBars}</div>

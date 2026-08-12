@@ -1128,8 +1128,9 @@ function pbars(obj, cols, prevObj){
   if(!obj||!Object.keys(obj).length) return '<div class="text-muted" style="font-size:12px">데이터 없음</div>';
   const mx=Math.max(...Object.values(obj))||1;
   return Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([p,v],i)=>{
-    // prevObj 전달 시 '작년 X → 올해 X' 병기
-    const val=prevObj?(()=>{const pv=(prevObj[p]||0);return `<span style="font-size:12px;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">${pv>0?'작년 '+fmtW(pv):'신규'}</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700;color:${cols[i%cols.length]}">올해 ${fmtW(v)}</span></span>`;})():`<span style="font-size:12px;font-weight:700;color:${cols[i%cols.length]}">${fmtW(v)}</span>`;
+    // prevObj 전달 시 '작년 X → 올해 X' 병기. 전년 목록은 상위 4개만 저장되므로 없는 제품은 '신규' 단정 대신 기존 표시로.
+    const _pv=prevObj?prevObj[p]:null;
+    const val=(prevObj&&_pv>0)?`<span style="font-size:12px;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">작년 ${fmtW(_pv)}</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700;color:${cols[i%cols.length]}">올해 ${fmtW(v)}</span></span>`:`<span style="font-size:12px;font-weight:700;color:${cols[i%cols.length]}">${fmtW(v)}</span>`;
     return `<div style="padding:5px 0;border-bottom:1px solid #f3f4f6"><div style="display:flex;flex-direction:row;justify-content:space-between;gap:8px;margin-bottom:3px"><span style="font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</span>${val}</div><div style="background:#f3f4f6;border-radius:3px;height:5px"><div style="width:${(v/mx*100).toFixed(1)}%;height:100%;background:${cols[i%cols.length]};border-radius:3px"></div></div></div>`;
   }).join('');
 }
@@ -3036,7 +3037,7 @@ function _ovmBar(label,v,max,col,prev,qty,qtyPrev){
   return '<div style="display:flex;flex-direction:row;align-items:center;gap:8px;margin-bottom:5px;font-size:12px"><span style="width:110px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">'+_esc(label)+'</span><div style="flex:1;min-width:40px;height:8px;background:#eef2f7;border-radius:4px;overflow:hidden"><div style="width:'+(max>0?Math.round(v/max*100):0)+'%;height:100%;background:'+col+'"></div></div>'+val+'</div>'; }
 function openMonthDetail(mo){
   var yr=+(document.getElementById('ov-year')&&document.getElementById('ov-year').value)||2026;
-  var cur=yr===2026?INTL:(INTL.data2025||{}), pre=yr===2026?(INTL.data2025||{}):null;
+  var cur=yr===2026?INTL:(INTL.data2025||{}), pre=(yr===2026&&INTL.data2025&&INTL.data2025.monthly)?INTL.data2025:null;
   var acc=(cur.monthly&&cur.monthly[mo])||0;
   var pAgg=(yr===2026)?_pendCombined(2026):{monthly:{}};
   var pend=(pAgg.monthly&&pAgg.monthly[mo])||0;
@@ -4322,15 +4323,15 @@ function _acctAll(){
   var key=((typeof INTL!=='undefined'&&INTL&&INTL.updatedAt)||'')+'|'+((typeof INTL!=='undefined'&&INTL&&INTL.rev)||'');
   if(_acctCache&&_acctKey===key)return _acctCache;
   var map={};
-  var jp={krw:0,m:{},prev:0,pm:{},prods:{},cnt:0,last:'',who:'일본 거래처',country:'일본',jpCnt:0};
-  var cn={krw:0,m:{},prev:0,pm:{},prods:{},cnt:0,last:'',who:'SBT-WON',country:'중국',cnCnt:0};
-  function ent(k){ return map[k]||(map[k]={krw:0,m:{},prev:0,pm:{},prods:{},cnt:0,last:'',who:'',country:''}); }
+  var jp={krw:0,m:{},prev:0,pm:{},prods:{},prevProds:{},cnt:0,last:'',who:'일본 거래처',country:'일본',jpCnt:0};
+  var cn={krw:0,m:{},prev:0,pm:{},prods:{},prevProds:{},cnt:0,last:'',who:'SBT-WON',country:'중국',cnCnt:0};
+  function ent(k){ return map[k]||(map[k]={krw:0,m:{},prev:0,pm:{},prods:{},prevProds:{},cnt:0,last:'',who:'',country:''}); }
   function add(g,o,isCur){
     if(isCur){ g.krw+=Number(o.total)||0;
       Object.entries(o.m||{}).forEach(function(me){g.m[me[0]]=(g.m[me[0]]||0)+Number(me[1]||0);});
       Object.entries(o.prods||{}).forEach(function(pe){g.prods[pe[0]]=(g.prods[pe[0]]||0)+Number(pe[1]||0);});
       g.cnt+=Number(o.cnt)||0; if((o.last||'')>g.last)g.last=o.last||'';
-    }else{ g.prev+=Number(o.total)||0; Object.entries(o.m||{}).forEach(function(me){g.pm[me[0]]=(g.pm[me[0]]||0)+Number(me[1]||0);}); }
+    }else{ g.prev+=Number(o.total)||0; Object.entries(o.m||{}).forEach(function(me){g.pm[me[0]]=(g.pm[me[0]]||0)+Number(me[1]||0);}); Object.entries(o.prods||{}).forEach(function(pe){g.prevProds[pe[0]]=(g.prevProds[pe[0]]||0)+Number(pe[1]||0);}); }
   }
   function scan(src,isCur){
     Object.entries((src&&src.countries)||{}).forEach(function(e){ var c=e[0],cd=e[1].clientData||{};

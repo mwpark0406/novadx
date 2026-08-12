@@ -856,7 +856,7 @@ function openDivDetail(n){
   var cur=(ACC&&ACC.reportDate)?(+String(ACC.reportDate).slice(5,7)):(new Date().getMonth()+1);
   var bars=mt.map(function(v,i){var hh=Math.round(v/mx*46);return '<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px"><div title="'+(i+1)+'월 '+won(v)+'원" style="width:66%;height:'+hh+'px;background:'+((i+1)===cur?'#2563eb':'#c7d2fe')+';border-radius:3px 3px 0 0"></div><span style="font-size:9px;color:#94a3b8">'+(i+1)+'</span></div>';}).join('');
   var tbl=function(rows,lbl){return '<table class="mm-tbl"><tr><th>'+lbl+'</th><th style="text-align:right">당월 매출</th><th style="text-align:right">비중</th></tr>'+(rows.length?rows.slice(0,15).map(function(r){return '<tr><td>'+esc(r[0]||'-')+'</td><td style="text-align:right">'+won(r[1])+'원</td><td style="text-align:right;color:#64748b">'+(tot>0?Math.round(r[1]/tot*100):0)+'%</td></tr>';}).join(''):'<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:10px">당월 라인 데이터 없음</td></tr>')+'</table>';};
-  document.getElementById('mm-title').innerHTML='\U0001F4CA '+esc(n)+' \uC0C1\uC138';
+  document.getElementById('mm-title').innerHTML='📊 '+esc(n)+' \uC0C1\uC138';
   document.getElementById('mm-sub').textContent='\uB2F9\uC6D4 \uD68C\uACC4 \uB9E4\uCD9C \uAD6C\uC131 \xB7 \uAC70\uB798\uCC98/\uD488\uBAA9/\uC6D4\uBCC4 \uCD94\uC774';
   document.getElementById('mm-confirm').style.display='none';
   var h='<div class="mm-card"><b>'+esc(n)+'</b> \xB7 \uB2F9\uC6D4 \uD68C\uACC4\uB9E4\uCD9C <b>'+won(tot)+'\uC6D0</b> \xB7 \uAC70\uB798\uCC98 '+cust.length+' \xB7 \uD488\uBAA9 '+prod.length+'</div>'+

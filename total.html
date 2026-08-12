@@ -3176,8 +3176,8 @@ function renderThisMonth(){
       + _tmAchHtml(tmo);
 }
 function _monthTarget(mo){
-  // 국내 월목표 = sales_targets(SALEST)의 국내영업 제품+소모품 (구 targets 테이블은 데모 DB에 없어 상시 0이던 것 교체)
-  return _tgt('국내영업','제품',mo,mo)+_tgt('국내영업','소모품',mo,mo);
+  // 전사 월목표 = sales_targets(SALEST)의 해당 월 전체 합 — 스트립 실적(국내+해외)과 같은 축이어야 달성률이 맞다
+  return (SALEST||[]).filter(x=>+x.year===2026&&+x.month===mo).reduce((s,x)=>s+(Number(x.amount)||0),0);
 }
 
 // ── 상세 조회 ────────────────────────────────────────────

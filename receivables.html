@@ -883,7 +883,7 @@ function viewHome(){
   top.forEach((i,n)=>{
     const r=E.find(x=>x.rid===i.rid);
     const st=r?(woOf(r)?woChip(woOf(r).st):(r.nextDate?`<span class="chip" style="background:${r.nextDate<=today()?'#F3E1E2':'#dcfce7'};color:${r.nextDate<=today()?'#C44E52':'#15803d'}">조치일 ${r.nextDate}</span>`:`<span class="chip" style="background:#f8fafc;color:#94a3b8;border:1px dashed #cbd5e1">계획 없음</span>`)):'-';
-    h+=`<tr class="clk" onclick="openRow('${i.rid}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b></td><td><b>${fmt(i.ar)}</b></td><td class="l">${clsChip(i.cls)}</td><td class="l">${esc(i.mgr)}</td><td class="l">${st}</td></tr>`;});
+    h+=`<tr class="clk" onclick="openRow('${escJs(i.rid)}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b></td><td><b>${fmt(i.ar)}</b></td><td class="l">${clsChip(i.cls)}</td><td class="l">${esc(i.mgr)}</td><td class="l">${st}</td></tr>`;});
   h+='</tbody></table></div></div>';
   // ═ 회계 요약 스트립 ═
   h+=`<div class="accstrip">
@@ -991,7 +991,7 @@ function viewMgmt(){
   h+=`<div class="kpi" style="flex:1 1 200px;min-width:0"><div class="l">관리대상 합계 <span class="hint">(잔액 보유 채권)</span></div><div class="v">${M.length}건</div><div class="s">${eok2(tot)}</div></div></div>`;
   h+=`<div class="bar-row"><input class="inp" style="width:230px" placeholder="거래처·담당자 검색" value="${esc(_mf.q)}" oninput="_mf.q=this.value;render()">${_mf.cls?`<button class="btn" onclick="_mf.cls='';render()">필터 해제: ${_mf.cls} ✕</button>`:''}<span class="hint">${items.length}건 표시 · 분류·의견은 행 클릭 후 수정</span></div>`;
   h+='<div class="card" style="padding:0;overflow:auto;max-height:70vh"><table class="dt"><thead><tr><th>#</th><th class="l">거래처명</th><th class="l">적요</th><th class="l">발생</th><th class="l">경과</th><th>미수금액(원)</th><th class="l">담당자</th><th class="l">현재상태</th><th class="l">분류</th><th class="l">분류 근거</th><th class="l">관리 의견</th></tr></thead><tbody>';
-  h+=items.map((i,n)=>`<tr class="clk" onclick="openRow('${i.rid}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b>${i._edited?' <span class="chip" style="background:#ecfdf5;color:#047857">수정</span>':''}</td><td class="l memo" title="${esc(i.memo)}">${esc(i.memo)}</td><td class="l">${esc(i.year)}</td><td class="l hint">${esc(i.elapsed)}</td><td><b>${fmt(i.ar)}</b></td><td class="l">${esc(i.mgr)}</td><td class="l">${typeChip(i.state)}</td><td class="l">${clsChip(i.cls)}</td><td class="l memo" title="${esc(i.basis)}">${esc(i.basis)}</td><td class="l memo" title="${esc(i.opinion)}">${esc(i.opinion)}</td></tr>`).join('')
+  h+=items.map((i,n)=>`<tr class="clk" onclick="openRow('${escJs(i.rid)}')"><td>${n+1}</td><td class="l"><b>${esc(i.name)}</b>${i._edited?' <span class="chip" style="background:#ecfdf5;color:#047857">수정</span>':''}</td><td class="l memo" title="${esc(i.memo)}">${esc(i.memo)}</td><td class="l">${esc(i.year)}</td><td class="l hint">${esc(i.elapsed)}</td><td><b>${fmt(i.ar)}</b></td><td class="l">${esc(i.mgr)}</td><td class="l">${typeChip(i.state)}</td><td class="l">${clsChip(i.cls)}</td><td class="l memo" title="${esc(i.basis)}">${esc(i.basis)}</td><td class="l memo" title="${esc(i.opinion)}">${esc(i.opinion)}</td></tr>`).join('')
     ||'<tr><td colspan="11" style="text-align:center;padding:26px;color:var(--muted)">해당 없음</td></tr>';
   h+='</tbody></table></div>';
   h+=`<div class="hint" style="margin-top:8px">분류 기준: 관리제외=대손·매출취소 처리 예정(실익 없음) · 집중관리=수금 실행 대상 · 검토필요=분류 판단 필요 · 담당자·경과는 항상 최신 데이터 반영, 분류·근거·의견은 관리대상 시트 작성 시점 기준(작성 ${(RAW.mgmt&&RAW.mgmt.asOf)||'-'} · 원본 기준일 ${(RAW.mgmt&&RAW.mgmt.base)||'-'})</div>`;

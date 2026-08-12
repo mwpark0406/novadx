@@ -175,11 +175,11 @@ body{font-family:'Pretendard','Noto Sans KR',sans-serif;background:#f0f4f8;color
 /* 분해 타일 — 마지막 요소라 margin-top:auto 로 카드 바닥에 붙어 좌우 카드 높이가 맞는다 */
 .qh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(91,117,145,.16);border:1px solid rgba(91,117,145,.16);border-radius:10px;overflow:hidden;margin-top:12px}
 @media(max-width:640px){.qh-grid{grid-template-columns:repeat(2,1fr)}}
-.qh-t{background:#fff;padding:9px 12px;display:flex;flex-direction:column;justify-content:center;min-height:56px}
-.qh-t .l{font-size:11px;font-weight:700;letter-spacing:.01em}
-.qh-t b{font-size:16px;font-weight:800;color:#1c2534;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.25}
-.qh-t b .y{font-size:11px;font-weight:700;color:#5b7591;letter-spacing:0}
-.qh-t .s{font-size:10.5px;color:#8fa7bf;font-weight:600}
+.qh-t{background:#fff;padding:11px 14px;display:flex;flex-direction:column;justify-content:center;min-height:62px}
+.qh-t .l{font-size:12.5px;font-weight:700;letter-spacing:.01em}
+.qh-t b{font-size:19px;white-space:nowrap;font-weight:800;color:#1c2534;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1.25}
+.qh-t b .y{font-size:12px;margin-left:3px;font-weight:700;color:#5b7591;letter-spacing:0}
+.qh-t .s{font-size:12px;color:#8296ab;font-weight:600;margin-top:2px}
 .qd-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;align-items:stretch;margin-bottom:12px}
 @media(max-width:1240px){.qd-top{grid-template-columns:1fr}}
 .qd-top .exec-hero{margin-bottom:0;display:flex;flex-direction:column}
@@ -3702,6 +3702,11 @@ function _qReps(){
   if(qState.ch!=='dom'){
     _repAcc(INTL.reps,INTL.monthly,f,t).forEach(r=>{ add(r.n,'intl',r.v); _mergeProds(out[r.n].prods,r.prods); });
     const i25=INTL.data2025||{}; _repAcc(i25.reps,i25.monthly,f,t).forEach(r=>{ if(!out[r.n]) add(r.n,'intl',0); out[r.n].intlPrev+=r.v; _mergeProds(out[r.n].prodsPrev,r.prods); });
+    // 해외 대수(안분) — 국내 장비 대수와 합산해 담당자별에서도 대수가 비지 않게
+    try{ const _iq=_intlRepQty(INTL,f,t), _iq25=_intlRepQty(i25,f,t);
+      Object.keys(_iq).forEach(n=>{ if(out[n]) out[n].qtyIntl=(out[n].qtyIntl||0)+_iq[n]; });
+      Object.keys(_iq25).forEach(n=>{ if(out[n]) out[n].qtyIntlPrev=(out[n].qtyIntlPrev||0)+_iq25[n]; });
+    }catch(e){}
   }
   let arr=Object.values(out).map(r=>{
     const val=qState.ch==='dom'?r.dom:qState.ch==='intl'?r.intl:r.dom+r.intl;
@@ -3715,7 +3720,7 @@ function _qReps(){
     // 회사 직원 / 대리점, 그리고 담당 채널(국내·해외)을 붙여 표에서 바로 구분되게 한다
     const grp=_isStaff(r.name)?'직원':'대리점';
     const ch=(r.dom>0&&r.intl>0)?'국내·해외':(r.intl>0?'해외':'국내');
-    return {name:r.name,val,prev,qty:r.qtyDev||0,qtyPrev:r.qtyDevPrev||0,qtyNote:'국내 장비',grp,tag:ch,color:'#7c3aed',detail};
+    return {name:r.name,val,prev,qty:(r.qtyDev||0)+(r.qtyIntl||0),qtyPrev:(r.qtyDevPrev||0)+(r.qtyIntlPrev||0),qtyNote:'국내 장비+해외',grp,tag:ch,color:'#7c3aed',detail};
   });
   arr=arr.filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
   return arr;
@@ -3763,6 +3768,21 @@ const _yoyCol=v=> v==null?'#94a3b8' : v>=30?'#15803d' : v>=5?'#16a34a' : v>=-5?'
 function fmtD(v){ return (v<0?'-':'+')+fmtW(Math.abs(Number(v)||0)); }
 // 담당자명 코드접두 제거("244.김한결"→"김한결") — 연도별 키 불일치 매칭/병합용
 function _repBase(n){ return String(n||'').replace(/^\s*\d+\.\s*/,'').trim(); }
+// 해외 담당자 대수 — 담당자×제품 수량 원자료가 없어, 담당자 제품매출을 제품 전체 매출 대비 비중으로 수량 안분(mq 있으면 그것 우선)
+function _intlRepQty(src,f,t){
+  const out={}; if(!src||!src.reps) return out;
+  const pv={},pq={};
+  Object.keys(src.prodMo||{}).forEach(function(p2){ pv[p2]=sumMo(src.prodMo[p2],f,t); });
+  Object.keys(src.prodMoQty||{}).forEach(function(p2){ pq[p2]=sumMo(src.prodMoQty[p2],f,t); });
+  Object.entries(src.reps).forEach(function(e){ const n=e[0], r=e[1], nm=_repBase(n);
+    if(r&&r.mq&&Object.keys(r.mq).length){ out[nm]=(out[nm]||0)+sumMo(r.mq,f,t); return; }
+    const yv=sumMo(r&&r.m,1,12), sv=sumMo(r&&r.m,f,t); if(!yv) return;
+    const sc=sv/yv; let q=0;
+    Object.keys((r&&r.prods)||{}).forEach(function(p2){ if(!pv[p2]||!pq[p2]) return; q+=((r.prods[p2]||0)*sc)/pv[p2]*pq[p2]; });
+    out[nm]=(out[nm]||0)+Math.round(q);
+  });
+  return out;
+}
 // 0기준 발산막대(증감)
 function divBar(delta,maxAbs){ const w=maxAbs>0?Math.min(Math.abs(delta)/maxAbs*50,50):0, pos=delta>=0;
   return '<div class="divbar"><div class="dz"></div><div class="dfill" style="'+(pos?'left:50%':'right:50%')+';width:'+w.toFixed(1)+'%;background:'+(pos?'#16a34a':'#dc2626')+'"></div></div>'; }
@@ -4213,9 +4233,10 @@ function renderLeaderboard(){
     else { o.tot25+=r.total||0; o.cust25+=r.clients||0; }
   }); };
   iadd(INTL.reps,26); iadd((INTL.data2025||{}).reps,25);
+  const _lbQ=_intlRepQty(INTL,f,t);   // 해외 대수(안분) — 비어 있던 열 채움
   const rowsI=Object.values(im).map(o=>{ const v=Object.keys(o.m26).length?sumMo(o.m26,f,t):(o.tot26||0), pv=Object.keys(o.m25).length?sumMo(o.m25,f,t):(o.tot25||0);
     const tp=Object.entries(o.prods).sort((a,b)=>b[1]-a[1])[0];
-    return {n:o.n,team:'해외',v,pv,d:v-pv,yoy:pct(v,pv),cust:o.cust,cust25:o.cust25,qty:null,top:tp?tp[0]:'',ctry:o.ctry,m26:o.m26,m25:o.m25,prods:o.prods};
+    return {n:o.n,team:'해외',v,pv,d:v-pv,yoy:pct(v,pv),cust:o.cust,cust25:o.cust25,qty:(_lbQ[o.n]||0)||null,top:tp?tp[0]:'',ctry:o.ctry,m26:o.m26,m25:o.m25,prods:o.prods};
   });
   _lbRows=[];   // 담당자 드릴 캐시(인덱스 onclick — 이름 인젝션 방지)
   const mk=(rows,hasQty)=>{ rows=rows.filter(x=>x.v>0).sort((a,b)=>b.d-a.d); const maxAbs=Math.max(1,...rows.map(x=>Math.abs(x.d)));
@@ -4228,7 +4249,7 @@ function renderLeaderboard(){
       (hasQty?'<td class="r">'+_num(x.qty)+'대</td>':'<td class="r">'+(x.ctry||0)+'개국</td>')+'<td class="muted" style="font-size:11px">'+esc(x.top||'')+'</td></tr>'; }).join('');
     return '<div class="lb-wrap"><table class="lb-table">'+head+body+'</table></div>'; };
   document.getElementById('lb-dom').innerHTML=mk(rowsD,true);
-  document.getElementById('lb-intl').innerHTML=mk(rowsI,false);
+  document.getElementById('lb-intl').innerHTML=mk(rowsI,true);
   // 팀 요약 — 표만 보면 팀 전체 그림이 안 보여서 상단에 합계·선두를 얹는다
   const team=(rows,label,sub,extraK,extraV)=>{
     const a=rows.filter(x=>x.v>0);

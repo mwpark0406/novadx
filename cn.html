@@ -2879,9 +2879,9 @@ function renderUserMgmt(members) {
 
     return '<tr>'
 
-      + '<td>' + m.email + (isSelf ? ' <span style="font-size:10px;color:#3b82f6">(나)</span>' : '') + '</td>'
+      + '<td>' + esc(m.email) + (isSelf ? ' <span style="font-size:10px;color:#3b82f6">(나)</span>' : '') + '</td>'
 
-      + '<td>' + (m.display_name || '-') + '</td>'
+      + '<td>' + esc(m.display_name || '-') + '</td>'
 
       + '<td style="text-align:center">' + roleLabel + '</td>'
 
@@ -4447,8 +4447,8 @@ function renderExecSummary(){
   var churn=Object.keys(clP).filter(function(c){return (clY[c]||0)<=(clP[c]*0.1);}).map(function(c){return {c:c,b:clP[c]};}).sort(function(a,b){return b.b-a.b;}).slice(0,6);
   function ctab(title,rows){return '<div class="esdl"><div class="t">'+title+'</div><table class="estab"><tbody>'+rows+'</tbody></table></div>';}
   document.getElementById('esClinic').innerHTML=
-    ctab('⭐ '+(zh?'主力诊所':'주력 클리닉'), core.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'clinic\',\''+_dq(x.c)+'\')"><td>'+x.c+'</td><td class="num" style="font-weight:700">'+_amt(x.a)+'</td></tr>';}).join('')||'<tr><td style="color:#94a3b8">-</td></tr>')+
-    ctab('⚠️ '+(zh?'再購入必要':'재구매 필요'), churn.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'clinic\',\''+_dq(x.c)+'\')"><td>'+x.c+'</td><td class="num" style="color:#b91c1c">'+(zh?'前年':'전년')+' '+_amt(x.b)+'</td></tr>';}).join('')||'<tr><td style="color:#94a3b8">-</td></tr>');
+    ctab('⭐ '+(zh?'主力诊所':'주력 클리닉'), core.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'clinic\',\''+_dq(x.c)+'\')"><td>'+esc(x.c)+'</td><td class="num" style="font-weight:700">'+_amt(x.a)+'</td></tr>';}).join('')||'<tr><td style="color:#94a3b8">-</td></tr>')+
+    ctab('⚠️ '+(zh?'再購入必要':'재구매 필요'), churn.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'clinic\',\''+_dq(x.c)+'\')"><td>'+esc(x.c)+'</td><td class="num" style="color:#b91c1c">'+(zh?'前年':'전년')+' '+_amt(x.b)+'</td></tr>';}).join('')||'<tr><td style="color:#94a3b8">-</td></tr>');
   // 미수 에이징 + 장기미수
   var buck=[{l:'0~30',mn:0,mx:30,amt:0,cnt:0},{l:'31~90',mn:31,mx:90,amt:0,cnt:0},{l:'91~180',mn:91,mx:180,amt:0,cnt:0},{l:'180+',mn:181,mx:1e9,amt:0,cnt:0}];
   outAll.forEach(function(x){for(var i=0;i<buck.length;i++){if(x.el>=buck[i].mn&&x.el<=buck[i].mx){buck[i].amt+=x.out;buck[i].cnt++;break;}}});
@@ -4456,7 +4456,7 @@ function renderExecSummary(){
   var ag='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px">'+buck.map(function(b,i){return '<div class="esc" style="border-left-color:'+bcol[i]+'"><div class="l">'+(zh?'経過':'경과')+' '+b.l+(zh?'日':'일')+'</div><div class="v">'+_amt(b.amt)+'</div><div class="d" style="color:#94a3b8">'+b.cnt+(zh?'件':'건')+'</div></div>';}).join('')+'</div>';
   var longO=outAll.slice().sort(function(a,b){return b.el-a.el;}).slice(0,8);
   ag+='<div class="esdl"><div class="t">📋 '+(zh?'長期应收 TOP':'장기 미수 TOP')+' <span style="font-weight:400;color:#94a3b8;font-size:11px">('+(zh?'点击查看明细':'클릭 시 내역')+')</span></div><table class="estab"><thead><tr><th>'+(zh?'客户':'거래처')+'</th><th>'+(zh?'诊所':'클리닉')+'</th><th class="num">'+(zh?'应收':'미수')+'</th><th class="num">'+(zh?'経過':'경과')+'</th></tr></thead><tbody>'+
-    longO.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'facility\',\''+_dq(x.o.facility||'')+'\')"><td>'+(x.o.facility||'-')+'</td><td>'+(x.o.clinic||'-')+'</td><td class="num">'+_amt(x.out)+'</td><td class="num" style="color:'+(x.el>=180?'#ef4444':x.el>=90?'#f97316':'#64748b')+';font-weight:700">'+x.el+(zh?'日':'일')+'</td></tr>';}).join('')+'</tbody></table></div>';
+    longO.map(function(x){return '<tr class="clk" onclick="openExecDrill(\'facility\',\''+_dq(x.o.facility||'')+'\')"><td>'+esc(x.o.facility||'-')+'</td><td>'+esc(x.o.clinic||'-')+'</td><td class="num">'+_amt(x.out)+'</td><td class="num" style="color:'+(x.el>=180?'#ef4444':x.el>=90?'#f97316':'#64748b')+';font-weight:700">'+x.el+(zh?'日':'일')+'</td></tr>';}).join('')+'</tbody></table></div>';
   document.getElementById('esAge').innerHTML=ag;
   try{_esTrend(year);}catch(_e){}
 }
@@ -5632,7 +5632,7 @@ function renderCaList(){
   }
   var arr=Object.keys(fmap).filter(function(f){return !q||f.toLowerCase().indexOf(q)>=0;}).map(function(f){return {f:f,d:fmap[f]};}).sort(function(a,b){return b.d.ord-a.d.ord;});
   document.getElementById('caListHead').innerHTML='<tr><th>'+(zh?'客户':'거래처')+'</th><th class="num">'+(zh?'诊所':'클리닉')+'</th><th class="num">'+(zh?'订单':'수주')+'</th><th class="num">'+(zh?'收款':'수금')+'</th><th class="num">'+(zh?'应收':'미수')+'</th><th class="num">'+(zh?'笔数':'건수')+'</th></tr>';
-  document.getElementById('caListBody').innerHTML=arr.map(function(x){return '<tr class="clk" onclick="selectCa(\''+_dq(x.f)+'\')"><td>'+x.f+'</td><td class="num">'+Object.keys(x.d.cl).length+'</td><td class="num" style="font-weight:700">¥'+fmt(Math.round(x.d.ord))+'</td><td class="num">¥'+fmt(Math.round(x.d.pay))+'</td><td class="num" style="color:'+(x.d.out>0?'#ef4444':'#cbd5e1')+'">¥'+fmt(Math.round(x.d.out))+'</td><td class="num">'+x.d.cnt+'</td></tr>';}).join('')||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:18px">'+(zh?'无数据':'데이터 없음')+'</td></tr>';
+  document.getElementById('caListBody').innerHTML=arr.map(function(x){return '<tr class="clk" onclick="selectCa(\''+_dq(x.f)+'\')"><td>'+esc(x.f)+'</td><td class="num">'+Object.keys(x.d.cl).length+'</td><td class="num" style="font-weight:700">¥'+fmt(Math.round(x.d.ord))+'</td><td class="num">¥'+fmt(Math.round(x.d.pay))+'</td><td class="num" style="color:'+(x.d.out>0?'#ef4444':'#cbd5e1')+'">¥'+fmt(Math.round(x.d.out))+'</td><td class="num">'+x.d.cnt+'</td></tr>';}).join('')||'<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:18px">'+(zh?'无数据':'데이터 없음')+'</td></tr>';
 }
 function selectCa(fac){ _caSel=fac; document.getElementById('caListWrap').style.display='none'; document.getElementById('caDetail').style.display='block'; renderCaDetail(fac); var el=document.getElementById('page-customer-analysis'); if(el)el.scrollIntoView({block:'start'}); }
 function caBackToList(){ _caSel=null; document.getElementById('caDetail').style.display='none'; document.getElementById('caListWrap').style.display=''; renderCaList(); }
@@ -5671,18 +5671,18 @@ function renderCaDetail(fac){
   var pr={}; orders.forEach(function(o){var k=o.product||'-';pr[k]=pr[k]||{qty:0,amt:0,cnt:0};pr[k].qty+=(o.qty||0);pr[k].amt+=(o.amount||0);pr[k].cnt++;});
   var prk=Object.keys(pr).sort(function(a,b){return pr[b].amt-pr[a].amt;});
   document.getElementById('caProdHead').innerHTML='<tr><th>'+(zh?'产品':'제품')+'</th><th class="num">'+(zh?'数量':'수량')+'</th><th class="num">'+(zh?'笔数':'건수')+'</th><th class="num">'+(zh?'金额':'금액')+'</th></tr>';
-  document.getElementById('caProdBody').innerHTML=prk.map(function(k){return '<tr class="clk" onclick="openDrill({facility:\''+_dq(fac)+'\',product:\''+_dq(k)+'\',year:\''+(yr||'')+'\',title:\''+_dq(fac)+' · '+_dq(k)+'\'})"><td>'+k+'</td><td class="num">'+fmt(pr[k].qty)+'</td><td class="num">'+pr[k].cnt+'</td><td class="num" style="font-weight:700">¥'+fmt(Math.round(pr[k].amt))+'</td></tr>';}).join('');
+  document.getElementById('caProdBody').innerHTML=prk.map(function(k){return '<tr class="clk" onclick="openDrill({facility:\''+_dq(fac)+'\',product:\''+_dq(k)+'\',year:\''+(yr||'')+'\',title:\''+_dq(fac)+' · '+_dq(k)+'\'})"><td>'+esc(k)+'</td><td class="num">'+fmt(pr[k].qty)+'</td><td class="num">'+pr[k].cnt+'</td><td class="num" style="font-weight:700">¥'+fmt(Math.round(pr[k].amt))+'</td></tr>';}).join('');
   var clMap={}, hasC=false;
   orders.forEach(function(o){ if(o.clinic&&o.clinic!==fac) hasC=true; var c=o.clinic||fac; clMap[c]=clMap[c]||{amt:0,cnt:0}; clMap[c].amt+=(o.amount||0); clMap[c].cnt++; });
   if(hasC){
     document.getElementById('caClinicCard').style.display='';
     document.getElementById('caClinicHead').innerHTML='<tr><th>'+(zh?'诊所':'클리닉')+'</th><th class="num">'+(zh?'笔数':'건수')+'</th><th class="num">'+(zh?'金额':'금액')+'</th></tr>';
     var clk=Object.keys(clMap).sort(function(a,b){return clMap[b].amt-clMap[a].amt;});
-    document.getElementById('caClinicBody').innerHTML=clk.map(function(c){return '<tr class="clk" onclick="openDrill({facility:\''+_dq(fac)+'\',clinic:\''+_dq(c)+'\',year:\''+(yr||'')+'\',title:\''+_dq(c)+'\'})"><td>'+c+'</td><td class="num">'+clMap[c].cnt+'</td><td class="num">¥'+fmt(Math.round(clMap[c].amt))+'</td></tr>';}).join('');
+    document.getElementById('caClinicBody').innerHTML=clk.map(function(c){return '<tr class="clk" onclick="openDrill({facility:\''+_dq(fac)+'\',clinic:\''+_dq(c)+'\',year:\''+(yr||'')+'\',title:\''+_dq(c)+'\'})"><td>'+esc(c)+'</td><td class="num">'+clMap[c].cnt+'</td><td class="num">¥'+fmt(Math.round(clMap[c].amt))+'</td></tr>';}).join('');
   } else { document.getElementById('caClinicCard').style.display='none'; }
   document.getElementById('caTxnHead').innerHTML='<tr><th>'+(zh?'日付':'날짜')+'</th><th>'+(zh?'诊所':'클리닉')+'</th><th>'+(zh?'产品':'제품')+'</th><th>'+(zh?'区分':'구분')+'</th><th class="num">'+(zh?'数量':'수량')+'</th><th class="num">'+(zh?'金额':'금액')+'</th><th style="text-align:center">'+(zh?'收款':'입금')+'</th></tr>';
   var txns=orders.slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
-  document.getElementById('caTxnBody').innerHTML=txns.map(function(o){var paid=paidMap[o.stableId]||0;var amt=o.amount||0;var st=paid>=amt?'<span style="color:#16a34a;font-weight:700">'+(zh?'完了':'완료')+'</span>':paid>0?'<span style="color:#b45309;font-weight:700">'+(zh?'一部':'일부')+'</span>':'<span style="color:#dc2626;font-weight:700">'+(zh?'未':'미입금')+'</span>';return '<tr><td style="white-space:nowrap">'+o.date+'</td><td>'+(o.clinic||'-')+'</td><td>'+o.product+'</td><td>'+catBadge(o.category)+'</td><td class="num">'+fmt(o.qty)+'</td><td class="num">¥'+fmt(Math.round(amt))+'</td><td style="text-align:center">'+st+'</td></tr>';}).join('');
+  document.getElementById('caTxnBody').innerHTML=txns.map(function(o){var paid=paidMap[o.stableId]||0;var amt=o.amount||0;var st=paid>=amt?'<span style="color:#16a34a;font-weight:700">'+(zh?'完了':'완료')+'</span>':paid>0?'<span style="color:#b45309;font-weight:700">'+(zh?'一部':'일부')+'</span>':'<span style="color:#dc2626;font-weight:700">'+(zh?'未':'미입금')+'</span>';return '<tr><td style="white-space:nowrap">'+o.date+'</td><td>'+esc(o.clinic||'-')+'</td><td>'+esc(o.product)+'</td><td>'+catBadge(o.category)+'</td><td class="num">'+fmt(o.qty)+'</td><td class="num">¥'+fmt(Math.round(amt))+'</td><td style="text-align:center">'+st+'</td></tr>';}).join('');
 }
 
 function loadOutstandingPage(){
@@ -5729,7 +5729,7 @@ function renderOutstandingPage(d){
 
   document.getElementById('osFacilityTable').innerHTML=(d.facilityRank||[]).map(function(r){
 
-    var fac=r.facility.replace(/'/g,"\\'");
+    var fac=esc(r.facility).replace(/'/g,"\\'");
 
     return '<tr style="cursor:pointer" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'\'" onclick="filterByFacility(\''+fac+'\')">'+
 
@@ -6382,7 +6382,7 @@ function applyFilter(){
 
     body.innerHTML=filtered.slice(0,200).map(function(p){
 
-      return '<tr><td>'+p.date+'</td><td>'+p.description+'</td>'+
+      return '<tr><td>'+esc(p.date)+'</td><td>'+esc(p.description)+'</td>'+
 
         '<td class="amount">¥'+fmt(p.amount)+'</td><td style="font-size:11px;color:#94a3b8">'+p.orderRef+'</td></tr>';
 

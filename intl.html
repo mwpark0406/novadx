@@ -1150,9 +1150,10 @@ function _intlCtryQty(src,f,t){ var out={}; if(!src||!src.countries) return out;
   return out; }
 function _rankTable(rows, opts){
   opts=opts||{}; var col=opts.color||'#2563eb';
+  var _totAll=(rows||[]).reduce(function(s,r){return s+(Number(r.v)||0);},0);   // 분모는 반품·충당(음수) 포함해야 회계와 일치
   rows=(rows||[]).filter(function(r){return (Number(r.v)||0)>0;}).sort(function(a,b){return b.v-a.v;});
   if(!rows.length) return '<div class="text-muted" style="font-size:12px;padding:8px">데이터 없음</div>';
-  var tot=rows.reduce(function(s,r){return s+(Number(r.v)||0);},0)||1, mx=rows[0].v||1;
+  var tot=(opts.total!=null?Number(opts.total):_totAll)||1, mx=rows[0].v||1;
   var conc=Math.round(rows.slice(0,3).reduce(function(s,r){return s+r.v;},0)/tot*100);
   var mv=rows.filter(function(r){return (Number(r.prev)||0)>0;}).map(function(r){return {n:r.name,y:(r.v/r.prev-1)*100};});
   var up=mv.filter(function(m){return m.y>0;}).sort(function(a,b){return b.y-a.y;})[0];
@@ -1674,7 +1675,9 @@ async function _afterLogin(user) {
   await _loadIntlCrm();
   _loadQuotes();
   if(typeof _loadFx==="function")_loadFx(function(){});
-  _setDefaultRanges();
+  try{ _setDefaultRanges(); }catch(e){}
+  setTimeout(function(){ try{ _setDefaultRanges(); }catch(e){} },0);
+  setTimeout(function(){ try{ _setDefaultRanges(); }catch(e){} },600);
   try{ var _mp=_myPartIntl(), _all=_seeAllIntl(), _lead=_isLeaderIntl();
     // 섹션 단위 표시: 종합(팀장/관리자만) · 팀장·관리(팀장/관리자만)
     var _secOv=document.getElementById('sec-overview'); if(_secOv)_secOv.style.display=_all?'':'none';
@@ -2078,7 +2081,7 @@ function openDeal(id){
   document.getElementById('is-modal-title').textContent=id?'딜 수정':'새 딜';
   document.getElementById('d-stage').innerHTML=STAGES_INTL.map(function(s){return '<option'+(d.stage===s?' selected':'')+'>'+s+'</option>';}).join('');
   var cs=[]; INTL_PIPE.forEach(function(x){ if(x.country&&cs.indexOf(x.country)<0)cs.push(x.country); });
-  document.getElementById('d-country-list').innerHTML=cs.map(function(c){return '<option value="'+c+'">';}).join('');
+  document.getElementById('d-country-list').innerHTML=cs.map(function(c){return '<option value="'+_esc(c)+'">';}).join('');
   var set=function(k,v){var el=document.getElementById(k);if(el)el.value=(v==null?'':v);};
   set('d-country',d.country);set('d-dealer',d.dealer);set('d-product',d.product);set('d-amount',d.amount);
   set('d-prob',d.prob);set('d-sales',d.sales!=null?d.sales:_meName);set('d-ship',d.expectedShip);set('d-nextdate',d.nextDate);set('d-next',d.nextAction);set('d-note',d.note);
@@ -2209,7 +2212,7 @@ function renderDealers(){
   var ag=_dealerAgg(); var arr=Object.values(ag).filter(function(o){return !kw||((o.name+o.country).toLowerCase().indexOf(kw)>=0);}).sort(function(a,b){return (b.won+b.openAmt)-(a.won+a.openAmt);});
   var cnt=document.getElementById('dl-count'); if(cnt)cnt.textContent=arr.length+'개사';
   el.innerHTML='<div class="row g-2">'+arr.map(function(o){var info=INTL_DEALERS[o.name]||{};var ar=_dealerActual(o.name);
-    return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:14px 16px;border-radius:12px" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+    return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:14px 16px;border-radius:12px" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
       '<div style="display:flex;flex-direction:row;align-items:center;gap:10px">'+
         '<div style="width:38px;height:38px;border-radius:10px;background:'+_tierColor(info.tier||'')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">'+_esc((o.name||'?').slice(0,1).toUpperCase())+'</div>'+
         '<div style="flex:1;min-width:0">'+
@@ -2264,7 +2267,7 @@ function openAct(id){
   _actEdit=id?INTL_ACT.find(function(a){return a.id===id;}):null; var a=_actEdit||{};
   document.getElementById('ac-modal-title').textContent=id?'활동 수정':'활동 기록';
   document.getElementById('a-type').innerHTML=ACT_TYPES.map(function(t){return '<option'+(a.type===t?' selected':'')+'>'+t+'</option>';}).join('');
-  var cs=[]; INTL_PIPE.forEach(function(x){if(x.country&&cs.indexOf(x.country)<0)cs.push(x.country);}); INTL_ACT.forEach(function(x){if(x.country&&cs.indexOf(x.country)<0)cs.push(x.country);}); var dcl=document.getElementById('d-country-list'); if(dcl)dcl.innerHTML=cs.map(function(c){return '<option value="'+c+'">';}).join('');
+  var cs=[]; INTL_PIPE.forEach(function(x){if(x.country&&cs.indexOf(x.country)<0)cs.push(x.country);}); INTL_ACT.forEach(function(x){if(x.country&&cs.indexOf(x.country)<0)cs.push(x.country);}); var dcl=document.getElementById('d-country-list'); if(dcl)dcl.innerHTML=cs.map(function(c){return '<option value="'+_esc(c)+'">';}).join('');
   var g=function(k,v){var e=document.getElementById(k);if(e)e.value=v==null?'':v;};
   g('a-date',a.date||_today());g('a-country',a.country);g('a-dealer',a.dealer);g('a-product',a.product);g('a-sales',a.sales!=null?a.sales:_meName);g('a-content',a.content);g('a-next',a.nextAction);g('a-nextdate',a.nextDate);
   document.getElementById('a-del').style.display=id?'inline-block':'none';
@@ -2809,7 +2812,7 @@ function renderDealers(){
   else arr.sort(function(a,b){return b._hs-a._hs;});
   var cnt=document.getElementById('dl-count'); if(cnt)cnt.textContent=arr.length+'개사 · 건강 '+arr.filter(function(o){return o._hs>=70;}).length+' / 관찰 '+arr.filter(function(o){return o._hs>=40&&o._hs<70;}).length+' / 위험 '+arr.filter(function(o){return o._hs<40;}).length;
   el.innerHTML='<div class="row g-2">'+arr.map(function(o){var info=INTL_DEALERS[o.name]||{};var ar=o._ar;var hs=o._hs;var hc=_healthColor(hs);
-    return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:14px 16px;border-radius:12px;border-left:3px solid '+hc+'" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+    return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:14px 16px;border-radius:12px;border-left:3px solid '+hc+'" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
       '<div style="display:flex;flex-direction:row;align-items:center;gap:10px">'+
         '<div style="width:38px;height:38px;border-radius:10px;background:'+_tierColor(info.tier||'')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">'+_esc((o.name||'?').slice(0,1).toUpperCase())+'</div>'+
         '<div style="flex:1;min-width:0">'+
@@ -2938,14 +2941,21 @@ function renderQuotes(){
 <script>
 // ═══ 종합 v3: 월 상세 드릴다운 + 예정분 출고/선적예정일(일보 공유) ═══
 var ILBO_DOC=null;
+var _rangesApplied=false;
 function _setDefaultRanges(){
   try{
-    var last=1; for(var m=1;m<=12;m++){ if(INTL&&INTL.monthly&&Number(INTL.monthly[m])>0) last=m; }
+    if(_rangesApplied) return;
+    var last=0; for(var m=1;m<=12;m++){ if(INTL&&INTL.monthly&&Number(INTL.monthly[m])>0) last=m; }
+    if(!last) return;   // 데이터 로드 전 — 아래 폴링이 준비되면 다시 적용
+    _rangesApplied=true;
     var cm=Math.min(12,new Date().getMonth()+1);
     ['ct-to','pd-to','cs-to','rp-to'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=String(last); });
     var ov=document.getElementById('ov-to'); if(ov) ov.value=String(Math.max(last,cm));
   }catch(e){}
 }
+(function(){ var n=0, tm=setInterval(function(){ n++;
+  try{ _setDefaultRanges(); }catch(e){}
+  if(_rangesApplied||n>40) clearInterval(tm); },300); })();
 function _ilboKey(p){ return encodeURIComponent([p.customer||'',p.product||'',p.amount||'',p.expectedDate||''].join('|')); }
 function _ilboBodyHTML(scope){
   var _cp=function(p){ return p.country||(typeof _ctry==='function'?_ctry(p.customer):p.customer)||'기타'; };
@@ -3226,7 +3236,7 @@ function renderDealers(){
     var regKrw=list.reduce(function(s,o){return s+o._ar.krw;},0);
     var hdr='<div style="display:flex;flex-direction:row;align-items:center;gap:9px;margin:16px 2px 8px"><span style="width:4px;height:16px;background:#2563eb;border-radius:2px"></span><span style="font-size:13px;font-weight:800">'+_esc(rg)+'</span><span style="font-size:11px;color:#94a3b8">'+list.length+'개사'+(regKrw>0?' · 매출 '+fmtW(regKrw):'')+'</span></div>';
     var cards='<div class="row g-2">'+list.map(function(o){ var info=INTL_DEALERS[o.name]||{}; var hc=_healthColor(o._hs);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;flex-direction:row;align-items:center;gap:9px">'+
           '<div style="width:34px;height:34px;border-radius:9px;background:'+_tierColor(info.tier||'')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">'+_esc((o.name||'?').slice(0,1).toUpperCase())+'</div>'+
           '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:4px;padding:1px 5px">'+_esc(info.tier)+'</span>':'')+'<span title="상태" style="width:8px;height:8px;border-radius:50%;background:'+hc+';flex-shrink:0"></span></div>'+
@@ -3453,7 +3463,7 @@ function renderDealers(){
     var regKrw=list.reduce(function(s,o){return s+o._ar.krw;},0);
     var hdr='<div style="display:flex;align-items:center;gap:9px;margin:16px 2px 8px"><span style="width:4px;height:16px;background:#2563eb;border-radius:2px"></span><span style="font-size:13px;font-weight:800">'+_esc(rg)+'</span><span style="font-size:11px;color:#94a3b8">'+list.length+'개사'+(regKrw>0?' · 매출 '+fmtW(regKrw):'')+'</span></div>';
     var cards='<div class="row g-2">'+list.map(function(o){ var info=INTL_DEALERS[o.name]||{}; var hc=_healthColor(o._hs);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;align-items:center;gap:9px">'+
           '<div style="width:34px;height:34px;border-radius:9px;background:'+_tierColor(info.tier||'')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">'+_esc((o.name||'?').slice(0,1).toUpperCase())+'</div>'+
           '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:4px;padding:1px 5px">'+_esc(info.tier)+'</span>':'')+(o._jp?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:4px;padding:1px 5px">'+o._jp+'거래처 통합</span>':'')+'<span title="상태" style="width:8px;height:8px;border-radius:50%;background:'+hc+';flex-shrink:0"></span></div>'+
@@ -3799,7 +3809,7 @@ function renderDealers(){
     var regKrw=list.reduce(function(s,o){return s+o._ar.krw;},0);
     var hdr='<div style="display:flex;align-items:center;gap:9px;margin:16px 2px 8px"><span style="width:4px;height:16px;background:#2563eb;border-radius:2px"></span><span style="font-size:13px;font-weight:800">'+_esc(rg)+'</span><span style="font-size:11px;color:#94a3b8">'+list.length+'개사'+(regKrw>0?' · 매출 '+fmtW(regKrw):'')+'</span></div>';
     var cards='<div class="row g-2">'+list.map(function(o){ var info=INTL_DEALERS[o.name]||{};
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:12px 14px;border-radius:12px" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'+
           '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:4px;padding:1px 5px">'+_esc(info.tier)+'</span>':'')+(o._jp?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:4px;padding:1px 5px">'+o._jp+'개 통합</span>':'')+'</div>'+
           '<div style="font-size:10px;color:#94a3b8;margin-top:1px">'+_esc(o.country||'')+(o.sales?' · '+_esc(o.sales):'')+'</div></div>'+
@@ -3824,10 +3834,13 @@ function renderByRep(){
     var pipe=(INTL_PIPE||[]).filter(function(d){return d.sales===n&&d.stage!=='선적/납품';});
     var pipeK=pipe.reduce(function(s,d){return s+_dealKrw(d)*(Number(d.prob||0)/100);},0);
     return {n:n,r:r,v:ytd(r.m||{},f,t),pv:pv,pipeN:pipe.length,pipeK:pipeK};
-  }).filter(function(x){return x.v>0||x.pipeN>0;}).sort(function(a,b){return b.v-a.v;});
-  var tot=arr.reduce(function(s,x){return s+x.v;},0)||1, mx=arr.length?Math.max.apply(null,arr.map(function(x){return x.v;})):1;
+  }).sort(function(a,b){return b.v-a.v;});
+  var totAll=arr.reduce(function(s,x){return s+x.v;},0);   // 반품·충당 포함 합계(회계 일치)
+  var _negRep=arr.filter(function(x){return x.v<0;}).reduce(function(s,x){return s+x.v;},0);
+  arr=arr.filter(function(x){return x.v>0||x.pipeN>0;});
+  var tot=totAll||1, mx=arr.length?Math.max.apply(null,arr.map(function(x){return x.v;})):1;
   var mo=Math.max(1,t-f+1);
-  var kpis=[['담당자',arr.length+'명','#0891b2'],['기간 합계',fmtW(tot),'#0f172a'],['1인 평균',fmtW(tot/(arr.length||1)),'#7c3aed'],['CRM 가중예상',fmtW(arr.reduce(function(s,x){return s+x.pipeK;},0)),'#2563eb']];
+  var kpis=[['담당자',arr.length+'명','#0891b2'],['기간 합계'+(_negRep<0?' (반품·충당 '+fmtW(_negRep)+' 포함)':''),fmtW(tot),'#0f172a'],['1인 평균',fmtW(tot/(arr.length||1)),'#7c3aed'],['CRM 가중예상',fmtW(arr.reduce(function(s,x){return s+x.pipeK;},0)),'#2563eb']];
   var kpiH='<div class="row g-2 mb-2">'+kpis.map(function(c){return '<div class="col-6 col-md-3"><div class="kpi-card" style="padding:9px 12px"><div class="kpi-label">'+c[0]+'</div><div class="kpi-value" style="font-size:1rem;color:'+c[2]+'">'+c[1]+'</div></div></div>';}).join('')+'</div>';
   var medals=['🥇','🥈','🥉'];
   var rows=arr.map(function(x,i){
@@ -3965,7 +3978,7 @@ function renderDealers(){
     var cards='<div class="row g-2">'+list.map(function(o){
       var info=INTL_DEALERS[o.name]||{};
       var yy=pct(o._krw,o._prev);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 11px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 11px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:8px;padding:1px 7px">'+_esc(info.tier)+'</span>':'')+(o._jp?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:8px;padding:1px 6px">'+o._jp+'개 통합</span>':'')+'</div>'+
@@ -4183,7 +4196,7 @@ function renderDealers(){
     var cards='<div class="row g-2">'+list.map(function(o){
       var info=INTL_DEALERS[o.name]||{};
       var yy=pct(o._krw,o._prev);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 11px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 11px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:8px;padding:1px 7px">'+_esc(info.tier)+'</span>':'')+(o._jp?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:8px;padding:1px 6px">'+o._jp+'개 통합</span>':'')+'</div>'+
@@ -4438,7 +4451,7 @@ function renderDealers(){
     var cards='<div class="row g-2">'+list.map(function(o){
       var info=INTL_DEALERS[o.name]||{};
       var yy=pct(o._krw,o._prev);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 12px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 12px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:8px;padding:1px 7px">'+_esc(info.tier)+'</span>':'')+((o._jp||o._cn)?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:8px;padding:1px 6px">'+(o._jp||o._cn)+'개 통합</span>':'')+'</div>'+
@@ -4530,7 +4543,7 @@ function renderDealers(){
     var cards='<div class="row g-2">'+list.map(function(o){
       var info=INTL_DEALERS[o.name]||{};
       var yy=pct(o._krw,o._prev);
-      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 12px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+o.name.replace(/'/g,"\\'")+'\')">'+
+      return '<div class="col-md-6 col-lg-4"><div class="card dl-card h-100" style="cursor:pointer;padding:13px 15px 12px;border-radius:13px;border-left:3px solid '+_tierColor(info.tier||'')+'" onclick="openDealer(\''+_esc(o.name).replace(/'/g,"\\'")+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0" title="'+_esc(o.name)+'">'+_esc(o.name)+'</span>'+(info.tier?'<span style="font-size:9px;font-weight:700;color:#fff;background:'+_tierColor(info.tier)+';border-radius:8px;padding:1px 7px">'+_esc(info.tier)+'</span>':'')+((o._jp||o._cn)?'<span style="font-size:9px;color:#64748b;background:#f1f5f9;border-radius:8px;padding:1px 6px">'+(o._jp||o._cn)+'개 통합</span>':'')+'</div>'+

@@ -5801,12 +5801,13 @@ function consParseExcel(input) {
         const nm = r['거래처명']; if(!nm) return;
         if(INTERNAL_KW_JS.some(k=>nm.includes(k))) return;
         const amt2 = Number(r[' 금액 ']||r['금액']||0); if(!amt2) return;
-        let qty2 = parseInt(r['수량']||0); if(!(qty2>0)) qty2=null;
+        let qty2 = parseInt(r['수량']||0); if(!qty2) qty2=null;
+        if(qty2&&amt2<0&&qty2>0) qty2=-qty2;   // 반품 행 수량은 음수로 — 대수 부풀림 방지
         let prod  = r['구분#4']||'';
         if(EXCL_PROD_JS.includes(prod)) return;  // 의료기기 행 전체 제외
         const sales = r['담당자']||'';
         const rawDate = r['날짜'];
-        const mo = rawDate ? new Date(rawDate).getMonth()+1 : null;
+        const mo = monthNum(r['월']) || (rawDate ? new Date(rawDate).getMonth()+1 : null);
         const ds = rawDate ? new Date(rawDate).toISOString().slice(0,10) : null;
         if(!hospMap[nm]) hospMap[nm]={total:0,y2025:0,y2026:0,orders:0,prods:{},prods2025:{},prods2026:{},m2025:{},m2026:{},txns2025:[],txns2026:[],lastDate:null,_salesCnt:{}};
         hospMap[nm].total += amt2;
@@ -5865,7 +5866,8 @@ function consParseExcel(input) {
           if (amt === 0) return;  // 음수(반품·[결산]충당) 유지 = 순매출 (정본 aggDevice2026과 동일)
           let qtyRaw = parseInt(r['수량']||0);
           let qtyForExcl = qtyRaw > 0 ? qtyRaw : 1;
-          let qty = qtyRaw > 0 ? qtyRaw : 0;  // 빈 수량은 0(세지 않음, 금액은 반영)
+          let qty = qtyRaw ? qtyRaw : 0;  // 빈 수량은 0(세지 않음, 금액은 반영)
+          if(amt<0&&qty>0) qty=-qty;      // 반품 행 수량은 음수로
           const mo   = monthNum(r['월']);
           let prod = (r['구분#4']||'').trim();
           if (/hair|헤어/i.test(prod)) {
@@ -6052,7 +6054,9 @@ function consParseExcel(input) {
         const proc=(r,yr)=>{
           const ak=_amK(r),amt=Number(r[ak]||0);if(amt===0)return;   // 음수(반품·충당) 유지 = 순매출 (정본 aggIntl2026과 동일)
           const usd=Number(r['USD']||0);
-          let qty=parseInt(r['수량']||0);if(qty<=0)qty=1;
+          let qty=parseInt(r['수량']||0);
+          if(!qty) qty=(amt<0?-1:1);
+          else if(amt<0&&qty>0) qty=-qty;   // 반품 행 수량은 음수로
           const m=_moN(r['월']),p=(r['구분#4']||'').trim(),cat=(r['구분#2']||'').trim(),nm=(r['거래처명']||'').trim(),sl=(r['담당자']||'').trim(),co=_exCt(nm);
           const[mm,um,qm,pm2,pcm,pdm,pmm,pmqm,pqm,ctm,rpm]=yr===2026?[mo,mu,mq,pr,pc,pd,pm,pmq,pq,ct,rp]:[mo25,mu25,mq25,pr25,pc25,pd25,pm25,pmq25,pq25,ct25,rp25];
           if(m){mm[m]=(mm[m]||0)+amt;um[m]=(um[m]||0)+usd;qm[m]=(qm[m]||0)+qty;}
@@ -9582,6 +9586,10 @@ function copyQuoteLink(id){
 // ── 프로모션 자동 작성/발송 ──
 function _promoTpls(){ return (DB.d.logs||[]).filter(function(l){return l.kind==='promo';}).sort(function(a,b){return String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));}); }
 var _promoHosps=[];
+// 템플릿 셀렉트 채우기 — 참조만 있고 정의가 없어 판촉 모달이 ReferenceError로 먹통이던 것 복구
+function _promoFillSel(){ var sel=document.getElementById('promo-tpl'); if(!sel) return; var cur=sel.value; var tpls=_promoTpls();
+  sel.innerHTML='<option value="">— 새로 작성 —</option>'+tpls.map(function(tp){ return '<option value="'+_escH(tp.id)+'">'+_escH(tp.name||'(이름없음)')+(tp.by?(' · '+_escH(tp.by)):'')+'</option>'; }).join('');
+  if(cur && tpls.some(function(tp){return tp.id===cur;})) sel.value=cur; }
 function _promoFillDL(){ var dl=document.getElementById('promo-hosp-list'); if(dl&&!dl.dataset.f){ var ns=[].concat(Object.keys((CONS&&CONS.hospitals)||{}),Object.keys((DEVICE&&DEVICE.hospitals)||{})); ns=[...new Set(ns)].sort(function(a,b){return a.localeCompare(b,'ko');}); dl.innerHTML=ns.slice(0,2500).map(function(n){return '<option value="'+n.replace(/"/g,'&quot;')+'">';}).join(''); dl.dataset.f='1'; } }
 function openPromo(){ _promoFillDL(); _promoFillSel(); _promoPreview(); new bootstrap.Modal(document.getElementById('promoModal')).show(); }
 function openPromoFor(name){ _promoHosps=name?[name]:[]; _promoOpenWith(); }

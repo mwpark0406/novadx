@@ -716,7 +716,7 @@ function vMessages(R){
 async function postBoard(){ const el=document.getElementById('board-in'); const b=(el.value||'').trim(); if(!b)return; el.disabled=true;
   const ok=await postMsg('board',b); el.disabled=false; if(!ok){ toast(BOARD_OK?'등록 실패':'메시지 기능 준비 필요'); return; } el.value=''; await loadBoard(); vMessages(filtered()); toast('등록되었습니다'); }
 async function postMsg(scope,body){ try{ const {error}=await _sb.from('kor_messages').insert({scope:scope,author:MENAME,body:body.slice(0,2000)}); return !error; }catch(e){ return false; } }
-async function delMsg(id){ if(!confirm('삭제할까요?'))return; try{ await _sb.from('kor_messages').delete().eq('id',id); }catch(e){} await loadBoard(); if(curView==='messages')vMessages(filtered()); }
+async function delMsg(id){ if(!confirm('삭제할까요?'))return; try{ await _sb.from('kor_messages').delete().eq('id',id); }catch(e){} await loadBoard(); if(curView==='messages')vMessages(filtered()); if(window.__dno!=null && document.getElementById('memobox')) renderMemo(window.__dno); }
 
 /* ── 상세 모달 (+ 계약별 메모) ── */
 function detail(no,keepCtx){

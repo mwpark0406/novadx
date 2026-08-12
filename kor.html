@@ -4532,16 +4532,16 @@ function _ovShowModal(titleHtml, bodyHtml){
 // 제품 1건을 거래내역으로 집계 (월별/거래처별)
 function _ovProdAgg(cat, name){
   const isCons = cat==='cons', src = isCons?CONS:DEVICE;
-  const mo26={}, mo25={}, byHosp={}, qtyHosp={};
+  const mo26={}, mo25={}, byHosp={}, qtyHosp={}, byHospP={}, qtyHospP={};
   Object.entries(src.hospitals||{}).forEach(([h,obj])=>{
     (obj.txns2026||[]).forEach(t=>{ const prod=isCons?t[2]:t[3]; if(prod!==name) return; const amt=Number((isCons?t[3]:t[4])||0), m=+t[0], q=Number((isCons?t[4]:t[5])||0); mo26[m]=(mo26[m]||0)+amt; byHosp[h]=(byHosp[h]||0)+amt; qtyHosp[h]=(qtyHosp[h]||0)+q; });
-    (obj.txns2025||[]).forEach(t=>{ const prod=isCons?t[2]:t[3]; if(prod!==name) return; const amt=Number((isCons?t[3]:t[4])||0), m=+t[0]; mo25[m]=(mo25[m]||0)+amt; });
+    (obj.txns2025||[]).forEach(t=>{ const prod=isCons?t[2]:t[3]; if(prod!==name) return; const amt=Number((isCons?t[3]:t[4])||0), m=+t[0], q=Number((isCons?t[4]:t[5])||0); mo25[m]=(mo25[m]||0)+amt; byHospP[h]=(byHospP[h]||0)+amt; qtyHospP[h]=(qtyHospP[h]||0)+q; });
   });
   // 전년 '동기' = 2026 데이터가 있는 마지막 달까지의 2025 합계(작년 12개월 전체가 아님)
   const lastM26=Math.max(0,...Object.keys(mo26).map(Number));
   let tot25same=0; for(let m=1;m<=lastM26;m++) tot25same+=(mo25[m]||0);
   const tot25full=Object.values(mo25).reduce((s,v)=>s+v,0)||(src.products2025||{})[name]||0;
-  return {isCons, mo26, mo25, byHosp, qtyHosp, lastM26, tot26:(src.products2026||{})[name]||0, tot25:tot25same, tot25full};
+  return {isCons, mo26, mo25, byHosp, qtyHosp, byHospP, qtyHospP, lastM26, tot26:(src.products2026||{})[name]||0, tot25:tot25same, tot25full};
 }
 function _ovToggleQtr(key){
   window._ovQtrOpen = window._ovQtrOpen || new Set();
@@ -4576,7 +4576,13 @@ function openOvDetail(cat, name){
   const yoyHtml=yoy===null?'<span style="color:#64748b">신규</span>':'<span style="color:'+(yoy>=0?'#16a34a':'#dc2626')+'">'+(yoy>=0?'▲':'▼')+Math.abs(yoy).toFixed(1)+'%</span>';
   const hosps=Object.entries(d.byHosp).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const maxH=hosps.length?hosps[0][1]:1;
-  const hospHtml=hosps.length?hosps.map(([h,v],i)=>'<div data-h="'+String(h).replace(/"/g,'&quot;')+'" onclick="_ovToHosp(this.getAttribute(\'data-h\'))" title="클릭하면 거래처 상세 보기" style="padding:5px 4px;border-bottom:1px solid #f3f4f6;cursor:pointer;border-radius:6px;transition:background .12s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:600">'+(i+1)+'. '+_ovEsc(h)+' <i class="bi bi-box-arrow-up-right" style="font-size:8px;color:#cbd5e1"></i>'+(d.qtyHosp[h]?' <span style="color:#64748b;font-weight:400">·'+d.qtyHosp[h].toLocaleString()+'개</span>':'')+'</span><span style="font-weight:700;color:'+accent+'">'+_ovFmt(v)+'</span></div><div style="background:#f3f4f6;border-radius:3px;height:5px;overflow:hidden"><div style="width:'+(v/maxH*100).toFixed(1)+'%;height:100%;background:'+accent+'"></div></div></div>').join(''):'<div class="text-muted" style="font-size:12px;padding:8px 0">거래처별 내역 없음 (회계 거래내역 미저장 품목)</div>';
+  const unit=d.isCons?'개':'대';
+  const hospHtml=hosps.length?hosps.map(([h,v],i)=>{
+    const q26=d.qtyHosp[h]||0, v25=d.byHospP[h]||0, q25=d.qtyHospP[h]||0;
+    const prevTxt=v25>0?('작년 '+(q25?q25.toLocaleString()+unit+' ':'')+_ovFmt(v25)):'신규';
+    const curTxt='올해 '+(q26?q26.toLocaleString()+unit+' ':'')+_ovFmt(v);
+    return '<div data-h="'+String(h).replace(/"/g,'&quot;')+'" onclick="_ovToHosp(this.getAttribute(\'data-h\'))" title="클릭하면 거래처 상세 보기" style="padding:5px 4px;border-bottom:1px solid #f3f4f6;cursor:pointer;border-radius:6px;transition:background .12s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:3px"><span style="font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(i+1)+'. '+_ovEsc(h)+' <i class="bi bi-box-arrow-up-right" style="font-size:8px;color:#cbd5e1"></i></span><span style="flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">'+prevTxt+'</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700;color:'+accent+'">'+curTxt+'</span></span></div><div style="background:#f3f4f6;border-radius:3px;height:5px;overflow:hidden"><div style="width:'+(v/maxH*100).toFixed(1)+'%;height:100%;background:'+accent+'"></div></div></div>';
+  }).join(''):'<div class="text-muted" style="font-size:12px;padding:8px 0">거래처별 내역 없음 (회계 거래내역 미저장 품목)</div>';
   const pend=(typeof _pendingView==='function'?_pendingView(2026).items:[]).filter(it=>it.p.product===name && it.p.category===catLbl && (it.eff==='pending'||it.eff==='candidate'));
   const pendTot=pend.reduce((s,it)=>s+Number(it.p.amount||0),0);
   const pendHtml=pend.length?'<div style="margin-top:14px;background:#faf5ff;border:1px solid #ede9fe;border-radius:10px;padding:10px 12px"><div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:5px"><i class="bi bi-hourglass-split me-1"></i>예정분(회계 미반영) '+_ovFmt(pendTot)+'</div>'+pend.map(it=>'<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#6b7280"><span>'+(it.p.expected_date||'')+' · '+_ovEsc(it.p.hospital||'-')+'</span><span style="font-weight:600">'+_ovFmt(it.p.amount)+'</span></div>').join('')+'</div>':'';
@@ -4593,10 +4599,20 @@ function openOvMonth(month, year){
   year=(year===2025||year===2026)?year:2026;
   let consMo=(CONS['monthly'+year]||{})[month]||0, devMo=(DEVICE['monthly'+year]||{})[month]||0, _pendNote='';
   if(year===2026){ try{ var _pvM=(typeof _pendingView==='function')?(_pendingView(2026).agg||{}):{}, _imM=(typeof _ilboMonthMaps==='function')?(_ilboMonthMaps()||{}):{}; var _cP=((_pvM.consMonthly||{})[month]||0)+((_imM.consMo||{})[month]||0), _dP=((_pvM.devMonthly||{})[month]||0)+((_imM.devMo||{})[month]||0); if(_cP+_dP>0){ _pendNote='<div style="font-size:11px;color:#7c3aed;margin-bottom:8px"><i class="bi bi-hourglass-split me-1"></i>미반영(예정) 포함 · 회계반영 소모품 '+_ovFmt(consMo)+' · 제품 '+_ovFmt(devMo)+'</div>'; consMo+=_cP; devMo+=_dP; } }catch(e){} }
-  const cp={}, dp={};
-  Object.values(CONS.hospitals||{}).forEach(o=>(o['txns'+year]||[]).forEach(t=>{ if(+t[0]===month && t[2]) cp[t[2]]=(cp[t[2]]||0)+Number(t[3]||0); }));
-  Object.values(DEVICE.hospitals||{}).forEach(o=>(o['txns'+year]||[]).forEach(t=>{ if(+t[0]===month && t[3]) dp[t[3]]=(dp[t[3]]||0)+Number(t[4]||0); }));
-  const list=(obj,accent,cat)=>{ const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,8); const mx=e.length?e[0][1]:1; return e.length?e.map(([p,v])=>{ var pa=String(p).replace(/"/g,'&quot;'); return '<div data-p="'+pa+'" onclick="openOvDetail(\''+cat+'\',this.getAttribute(\'data-p\'))" style="padding:4px 5px;margin:0 -5px;cursor:pointer;border-radius:6px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" title="클릭하면 상세 내역 조회"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span style="font-weight:600">'+_ovEsc(p)+' <i class="bi bi-search" style="font-size:8px;color:#cbd5e1"></i></span><span style="font-weight:700;color:'+accent+'">'+_ovFmt(v)+'</span></div><div style="background:#f3f4f6;border-radius:3px;height:4px"><div style="width:'+(v/mx*100).toFixed(1)+'%;height:100%;background:'+accent+';border-radius:3px"></div></div></div>'; }).join(''):'<div class="text-muted" style="font-size:11px">내역 없음</div>'; };
+  const cp={}, dp={}, cpQ={}, dpQ={}, cpP={}, dpP={}, cpQP={}, dpQP={};
+  Object.values(CONS.hospitals||{}).forEach(o=>(o['txns'+year]||[]).forEach(t=>{ if(+t[0]===month && t[2]){ cp[t[2]]=(cp[t[2]]||0)+Number(t[3]||0); cpQ[t[2]]=(cpQ[t[2]]||0)+Number(t[4]||0); } }));
+  Object.values(DEVICE.hospitals||{}).forEach(o=>(o['txns'+year]||[]).forEach(t=>{ if(+t[0]===month && t[3]){ dp[t[3]]=(dp[t[3]]||0)+Number(t[4]||0); dpQ[t[3]]=(dpQ[t[3]]||0)+Number(t[5]||0); } }));
+  // 전년 같은 달 — 작년 N대 얼마 → 올해 N대 얼마 병기용 (2025 조회 시엔 2024 데이터가 없어 생략)
+  if(year===2026){
+    Object.values(CONS.hospitals||{}).forEach(o=>(o.txns2025||[]).forEach(t=>{ if(+t[0]===month && t[2]){ cpP[t[2]]=(cpP[t[2]]||0)+Number(t[3]||0); cpQP[t[2]]=(cpQP[t[2]]||0)+Number(t[4]||0); } }));
+    Object.values(DEVICE.hospitals||{}).forEach(o=>(o.txns2025||[]).forEach(t=>{ if(+t[0]===month && t[3]){ dpP[t[3]]=(dpP[t[3]]||0)+Number(t[4]||0); dpQP[t[3]]=(dpQP[t[3]]||0)+Number(t[5]||0); } }));
+  }
+  const list=(obj,accent,cat,qObj,pObj,pQObj,unit)=>{ const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,8); const mx=e.length?e[0][1]:1; return e.length?e.map(([p,v])=>{ var pa=String(p).replace(/"/g,'&quot;');
+    var q26=(qObj&&qObj[p])||0, v25=(pObj&&pObj[p])||0, q25=(pQObj&&pQObj[p])||0;
+    var val = year===2026
+      ? '<span style="color:#94a3b8;font-weight:500">'+(v25>0?('작년 '+(q25?q25.toLocaleString()+unit+' ':'')+_ovFmt(v25)):'신규')+'</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700;color:'+accent+'">올해 '+(q26?q26.toLocaleString()+unit+' ':'')+_ovFmt(v)+'</span>'
+      : '<span style="font-weight:700;color:'+accent+'">'+(q26?q26.toLocaleString()+unit+' ':'')+_ovFmt(v)+'</span>';
+    return '<div data-p="'+pa+'" onclick="openOvDetail(\''+cat+'\',this.getAttribute(\'data-p\'))" style="padding:4px 5px;margin:0 -5px;cursor:pointer;border-radius:6px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" title="클릭하면 상세 내역 조회"><div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:2px"><span style="font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_ovEsc(p)+' <i class="bi bi-search" style="font-size:8px;color:#cbd5e1"></i></span><span style="flex-shrink:0;white-space:nowrap">'+val+'</span></div><div style="background:#f3f4f6;border-radius:3px;height:4px"><div style="width:'+(v/mx*100).toFixed(1)+'%;height:100%;background:'+accent+';border-radius:3px"></div></div></div>'; }).join(''):'<div class="text-muted" style="font-size:11px">내역 없음</div>'; };
   const body=_pendNote+'<div style="display:flex;gap:8px;margin-bottom:16px">'+_ovKpiBox('소모품',_ovFmt(consMo),'#2563eb')+_ovKpiBox('제품',_ovFmt(devMo),'#16a34a')+_ovKpiBox('합계',_ovFmt(consMo+devMo),'#111827')+'</div>'
     +'<div class="row g-3"><div class="col-md-6"><div style="font-size:12px;font-weight:700;color:#2563eb;margin-bottom:4px"><i class="bi bi-capsule me-1"></i>소모품 상위</div>'+list(cp,'#2563eb','cons')+'</div>'
     +'<div class="col-md-6"><div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:4px"><i class="bi bi-box-seam me-1"></i>제품 상위</div>'+list(dp,'#16a34a','dev')+'</div></div>';
@@ -5079,7 +5095,7 @@ function renderRegion(){
   if(_regViewMode==='map' && _regMap) _plotHospitalMarkers();
 }
 function _hospRow(name,o,maxH){
-  return '<div data-h="'+String(name).replace(/"/g,'&quot;')+'" onclick="_ovToHosp(this.getAttribute(\'data-h\'))" title="클릭하면 거래처 상세" style="padding:5px 6px;cursor:pointer;border-radius:5px;border-bottom:1px solid #f6f8fa" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:2px"><span style="font-weight:600">'+_ovEsc(name)+' <i class="bi bi-box-arrow-up-right" style="font-size:8px;color:#cbd5e1"></i>'+(o.sales?' <span style="color:#64748b;font-weight:400">·'+_ovEsc(o.sales)+'</span>':'')+(o.prod?' <span style="color:#cbd5e1;font-weight:400">'+_ovEsc(o.prod)+'</span>':'')+'</span><span style="display:flex;gap:6px;align-items:center"><span style="font-weight:700">'+_ovFmt(o.v26)+'</span>'+_grBadge(o.v26,o.v25)+'</span></div><div style="background:#f3f4f6;border-radius:3px;height:4px"><div style="width:'+(o.v26/maxH*100).toFixed(1)+'%;height:100%;background:#2563eb;border-radius:3px"></div></div></div>';
+  return '<div data-h="'+String(name).replace(/"/g,'&quot;')+'" onclick="_ovToHosp(this.getAttribute(\'data-h\'))" title="클릭하면 거래처 상세" style="padding:5px 6px;cursor:pointer;border-radius:5px;border-bottom:1px solid #f6f8fa" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'"><div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:2px"><span style="font-weight:600">'+_ovEsc(name)+' <i class="bi bi-box-arrow-up-right" style="font-size:8px;color:#cbd5e1"></i>'+(o.sales?' <span style="color:#64748b;font-weight:400">·'+_ovEsc(o.sales)+'</span>':'')+(o.prod?' <span style="color:#cbd5e1;font-weight:400">'+_ovEsc(o.prod)+'</span>':'')+'</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">'+(o.v25>0?'작년 '+_ovFmt(o.v25):'신규')+'</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700">올해 '+_ovFmt(o.v26)+'</span>'+_grBadge(o.v26,o.v25)+'</span></div><div style="background:#f3f4f6;border-radius:3px;height:4px"><div style="width:'+(o.v26/maxH*100).toFixed(1)+'%;height:100%;background:#2563eb;border-radius:3px"></div></div></div>';
 }
 function openRegionDetail(sidoName){
   const P=_regSel(); const {sido}=_regionAgg(P); const o=sido[sidoName]; if(!o) return;
@@ -10277,9 +10293,11 @@ function showHospitalDetail(name){
   const cons26 = hospCons?.y2026||0, cons25est = hospCons?ytdMo.reduce((s,m)=>s+(hospCons.m2025?.[m]||0),0):0;
   const consChg = cons25est>0?((cons26/cons25est-1)*100).toFixed(1):null;
   const _EXCL_SUMMARY = new Set(['A/S소모품','의료기기']);
+  const _cpFmt=v=>v>=1e4?Math.round(v/1e4).toLocaleString()+'만':v.toLocaleString();
   const consProdBars = hospCons?.prods ? Object.entries(hospCons.prods).filter(([p])=>!_EXCL_SUMMARY.has(p)).sort((a,b)=>b[1]-a[1]).map(([p,v])=>{
     const pct=(v/Object.values(hospCons.prods).reduce((s,x)=>s+x,0)*100).toFixed(0);
-    return `<div style="margin-bottom:4px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#374151;margin-bottom:2px"><span>${p}</span><span style="font-weight:700">${v>=1e4?Math.round(v/1e4).toLocaleString()+'만':v.toLocaleString()}원</span></div><div style="height:5px;background:#f3f4f6;border-radius:3px"><div style="height:5px;width:${pct}%;background:#2563eb;border-radius:3px"></div></div></div>`;
+    const pv=(hospCons.prods2025||{})[p]||0;
+    return `<div style="margin-bottom:4px"><div style="display:flex;justify-content:space-between;gap:6px;font-size:10px;color:#374151;margin-bottom:2px"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</span><span style="flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8">${pv>0?'작년 '+_cpFmt(pv)+'원':'신규'}</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700">올해 ${_cpFmt(v)}원</span></span></div><div style="height:5px;background:#f3f4f6;border-radius:3px"><div style="height:5px;width:${pct}%;background:#2563eb;border-radius:3px"></div></div></div>`;
   }).join('') : '<span style="font-size:11px;color:#64748b">소모품 구매 이력 없음</span>';
   const GRADE_H=h=>{const v=h?.y2026||0;if(v>=3e7)return{g:'S',c:'#9333ea'};if(v>=1e7)return{g:'A',c:'#dc2626'};if(v>=3e6)return{g:'B',c:'#d97706'};if(v>=5e5)return{g:'C',c:'#2563eb'};return{g:'-',c:'#64748b'};};
   const {g:grd,c:grdC}=GRADE_H(hospCons);
@@ -13294,24 +13312,25 @@ function showDevRepDetail(repName) {
 
   // 제품별 실적도 선택 기간으로 재집계(연간 누계 고정 버그 수정)
   const _spanKeysR={}; _cur.forEach(x=>{_spanKeysR[x.y+"-"+x.m]=1;});
+  const _preKeysR={}; _prev.forEach(x=>{_preKeysR[x.y+"-"+x.m]=1;});
   // 입사일 라우팅 일치: 각 거래의 실제 귀속자(현담당/전임자)를 판정해 repName 소유분만 집계(랭크·월별표와 동일 기준)
   const _ownerOfTxn=(hn,h,y,mo)=>{ const cur=_repOf(hn); if(!cur) return ''; const jm=(typeof _repJoinMo==='function')?_repJoinMo(cur):0; return (jm&&mo&&(y*12+mo)<jm)?_repPredecessor(hn,h,cur):cur; };
+  // 제품별 — 올해(조회기간)·작년(전년 동기간) 금액+대수 함께 집계 (작년 N대 얼마 → 올해 N대 얼마)
   const prods={};
-  Object.entries(DEVICE.hospitals||{}).forEach(([hn,h])=>{ [["txns2026",2026],["txns2025",2025]].forEach(([tk,y])=>{ (h[tk]||[]).forEach(t=>{ const mo=+t[0]; if(!_spanKeysR[y+"-"+mo]) return; if(_ownerOfTxn(hn,h,y,mo)!==repName) return; const prod=t[3], amt=Number(t[4]||0); if(prod) prods[prod]=(prods[prod]||0)+amt; }); }); });
-  const maxP  = Math.max(...Object.values(prods))||1;
+  Object.entries(DEVICE.hospitals||{}).forEach(([hn,h])=>{ [["txns2026",2026],["txns2025",2025]].forEach(([tk,y])=>{ (h[tk]||[]).forEach(t=>{ const mo=+t[0], key=y+"-"+mo; const inCur=_spanKeysR[key], inPre=_preKeysR[key]; if(!inCur&&!inPre) return; if(_ownerOfTxn(hn,h,y,mo)!==repName) return; const prod=t[3], amt=Number(t[4]||0), q=Number(t[5]||0); if(!prod) return; const o=prods[prod]||(prods[prod]={cur:0,pre:0,qty:0,qtyPre:0}); if(inCur){o.cur+=amt;o.qty+=q;} if(inPre){o.pre+=amt;o.qtyPre+=q;} }); }); });
+  const maxP  = Math.max(...Object.values(prods).map(o=>o.cur))||1;
   const COLS  = ['#16a34a'];  // 장비 단일색(무지개 제거)
-  const prodsHtml = Object.entries(prods).sort((a,b)=>b[1]-a[1]).map(([p,v],i)=>`
+  const prodsHtml = Object.entries(prods).filter(([,o])=>o.cur>0||o.pre>0).sort((a,b)=>b[1].cur-a[1].cur).map(([p,o],i)=>`
     <div style="padding:6px 0;border-bottom:1px solid #f3f4f6">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-        <span style="font-size:12px;font-weight:600">${p}</span>
-        <span style="font-size:12px;font-weight:700;color:${COLS[i%COLS.length]}">${fmtW(v)}</span>
+      <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">
+        <span style="font-size:12px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p}</span>
+        <span style="font-size:12px;flex-shrink:0;white-space:nowrap"><span style="color:#94a3b8;font-weight:500">${o.pre>0?('작년 '+(o.qtyPre?o.qtyPre.toLocaleString()+'대 ':'')+fmtW(o.pre)):'신규'}</span> <span style="color:#cbd5e1">→</span> <span style="font-weight:700;color:${COLS[i%COLS.length]}">올해 ${o.qty?o.qty.toLocaleString()+'대 ':''}${fmtW(o.cur)}</span></span>
       </div>
       <div style="background:#f3f4f6;border-radius:3px;height:5px">
-        <div style="width:${(v/maxP*100).toFixed(1)}%;height:100%;background:${COLS[i%COLS.length]};border-radius:3px"></div>
+        <div style="width:${(o.cur/maxP*100).toFixed(1)}%;height:100%;background:${COLS[i%COLS.length]};border-radius:3px"></div>
       </div>
     </div>`).join('') || '<div class="text-muted" style="font-size:12px">데이터 없음</div>';
 
-  const _preKeysR={}; _prev.forEach(x=>{_preKeysR[x.y+"-"+x.m]=1;});
   const _hAgg={};
   Object.entries(DEVICE.hospitals||{}).forEach(([hn,h])=>{ [["txns2026",2026],["txns2025",2025]].forEach(([tk,y])=>{ (h[tk]||[]).forEach(t=>{ const mo=+t[0]; if(_ownerOfTxn(hn,h,y,mo)!==repName) return; const amt=Number(t[4]||0), key=y+"-"+mo; const o=_hAgg[hn]||(_hAgg[hn]={cur:0,pre:0,topProd:h.topProd||'',lastDate:h.lastDate||''}); if(_spanKeysR[key]) o.cur+=amt; if(_preKeysR[key]) o.pre+=amt; }); }); });
   const hospList = Object.entries(_hAgg).map(([name,o])=>({name,cur:o.cur,pre:o.pre,topProd:o.topProd,lastDate:o.lastDate})).filter(h=>h.cur>0||h.pre>0).sort((a,b)=>b.cur-a.cur);

@@ -1494,6 +1494,16 @@ td.wt-empty{padding:26px 12px}
 
 @media print{ .main{padding:0} }
 </style>
+<style id="wt-mobile-polish">
+/* 모바일 다듬기 v2 — 입력·터치 (레이아웃 무변경) */
+html{-webkit-text-size-adjust:100%}
+@media(max-width:820px){
+  /* iOS 사파리: 입력 글자가 16px 미만이면 포커스 때 화면이 자동 확대됨 → 차단 */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}
+  /* 더블탭 확대 판정 대기 제거(탭 반응 즉시) */
+  button,a,[onclick],select,label{touch-action:manipulation}
+}
+</style>
 </head>
 <body>
 

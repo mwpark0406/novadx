@@ -872,7 +872,7 @@ html{-webkit-text-size-adjust:100%}
 </div>
 <datalist id="crm-dealers"></datalist><datalist id="crm-products"></datalist><datalist id="crm-sales"></datalist>
 <div id="ovm-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:600;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#fff;border-radius:14px;padding:20px 22px;width:780px;max-width:96vw;max-height:90vh;overflow-y:auto">
+  <div style="background:#fff;border-radius:14px;padding:20px 22px;width:960px;max-width:96vw;max-height:90vh;overflow-y:auto">
     <div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;margin-bottom:12px"><span id="ovm-title" style="font-weight:700"></span><span style="cursor:pointer;font-size:20px;color:#94a3b8" onclick="document.getElementById('ovm-modal').style.display='none'">&times;</span></div>
     <div id="ovm-body"></div>
   </div>
@@ -1179,7 +1179,7 @@ function _rankTable(rows, opts){
   var rowArr=shown.map(function(r,i){ var sh=Math.round(r.v/tot*100); var pv=Number(r.prev)||0; var y=pv>0?((r.v/pv-1)*100):null;
     var yH=y===null?'<span style="color:#c4b5fd;font-size:10px">신규</span>':'<span style="color:'+(y>=0?'#16a34a':'#dc2626')+';font-weight:700">'+(y>=0?'▲':'▼')+Math.abs(y).toFixed(0)+'%</span>';
     return '<tr style="cursor:pointer;border-top:1px solid #f4f6f9" onclick="'+(r.click||'')+'" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'+
-      '<td style="padding:5px 8px;color:#cbd5e1;font-weight:700;text-align:right">'+(i+1)+'</td>'+
+      '<td style="padding:5px 6px;color:#cbd5e1;font-weight:700;text-align:right;white-space:nowrap">'+(i+1)+'</td>'+
       '<td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+(r.fi||'')+_esc(r.name)+'</b></td>'+
       '<td style="text-align:right;font-weight:700;color:'+col+';white-space:nowrap">'+fmtW(r.v)+'</td>'+
       (opts.qty?'<td style="text-align:right;color:#475569;font-size:11px;white-space:nowrap">'+(Number(r.q)||0).toLocaleString()+'대'+((Number(r.prevQ)||0)>0?' <span style="color:#cbd5e1;font-size:9px">('+(Number(r.prevQ)||0).toLocaleString()+')</span>':'')+'</td>':'')+
@@ -1189,12 +1189,14 @@ function _rankTable(rows, opts){
       (opts.metaHead?'<td style="text-align:right;color:#64748b;padding-right:8px;white-space:nowrap">'+(r.meta!=null?r.meta:'')+'</td>':'')+'</tr>';
   });
   var cspan=6+(opts.metaHead?1:0)+(opts.qty?1:0);
-  var thead='<thead style="background:#f8fafc;position:sticky;top:0;z-index:1"><tr><th style="text-align:right;padding:5px 8px">#</th><th>이름</th><th style="text-align:right">매출</th>'+(opts.qty?'<th style="text-align:right">대수</th>':'')+'<th style="padding-right:6px">비중</th><th style="text-align:right">전년</th><th style="text-align:right;padding-right:8px">YoY</th>'+(opts.metaHead?'<th style="text-align:right;padding-right:8px">'+opts.metaHead+'</th>':'')+'</tr></thead>';
+  var thead='<thead style="background:#f8fafc;position:sticky;top:0;z-index:1"><tr><th style="text-align:right;padding:5px 6px;white-space:nowrap">#</th><th>이름</th><th style="text-align:right">매출</th>'+(opts.qty?'<th style="text-align:right">대수</th>':'')+'<th style="padding-right:6px">비중</th><th style="text-align:right">전년</th><th style="text-align:right;padding-right:8px">YoY</th>'+(opts.metaHead?'<th style="text-align:right;padding-right:8px">'+opts.metaHead+'</th>':'')+'</tr></thead>';
   // 2단 모드: 좌우로 절반씩 나눠 가로 공간 활용
   if(opts.cols===2 && rowArr.length>4){
     var half=Math.ceil(rowArr.length/2);
-    var mk=function(part){ return '<table class="table table-sm mb-0" style="font-size:12px;width:100%">'+thead+'<tbody>'+part.join('')+'</tbody></table>'; };
-    return ins+'<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:340px;overflow-x:auto">'+mk(rowArr.slice(0,half))+'</div><div style="flex:1;min-width:340px;overflow-x:auto">'+mk(rowArr.slice(half))+'</div></div>';
+    // 열너비 고정(colgroup+fixed) — 좌우 두 표의 오와열을 일치시키고 가로 스크롤 제거
+    var cg='<colgroup><col style="width:30px"><col>'+(opts.qty?'<col style="width:52px"><col style="width:56px">':'<col style="width:56px">')+'<col style="width:78px"><col style="width:50px"><col style="width:46px">'+(opts.metaHead?'<col style="width:50px">':'')+'</colgroup>';
+    var mk=function(part){ return '<table class="table table-sm mb-0" style="font-size:12px;width:100%;table-layout:fixed">'+cg+thead+'<tbody>'+part.join('')+'</tbody></table>'; };
+    return ins+'<div style="display:flex;gap:14px;align-items:flex-start"><div style="flex:1;min-width:0">'+mk(rowArr.slice(0,half))+'</div><div style="flex:1;min-width:0">'+mk(rowArr.slice(half))+'</div></div>';
   }
   var more=(rows.length>lim)?('<tr><td colspan="'+cspan+'" style="text-align:center;color:#cbd5e1;font-size:11px;padding:5px">외 '+(rows.length-lim)+'개 · 상세에서 전체</td></tr>'):'';
   var wrapS=(opts.scroll==='fill')?'flex:1;min-height:0;overflow:auto':(opts.scroll?('overflow:auto;max-height:'+(typeof opts.scroll==='string'?opts.scroll:'56vh')):'overflow-x:auto');
@@ -1452,7 +1454,7 @@ function renderCtClient(){
       <div class="col-3"><div style="background:#eff6ff;border-radius:8px;padding:7px 10px"><div style="font-size:9px;color:#6b7280;font-weight:600">${yr}년 YTD</div><div style="font-size:13px;font-weight:800;color:#0891b2">${fmtW(curV)}</div></div></div>
       <div class="col-3"><div style="background:#f8fafc;border-radius:8px;padding:7px 10px"><div style="font-size:9px;color:#6b7280;font-weight:600">${yr-1}년 YTD</div><div style="font-size:13px;font-weight:800;color:#94a3b8">${fmtW(preV)}</div></div></div>
       <div class="col-3"><div style="background:#f8fafc;border-radius:8px;padding:7px 10px"><div style="font-size:9px;color:#6b7280;font-weight:600">YoY</div><div style="font-size:13px;font-weight:800;color:${yoyColor}">${yoyText}</div></div></div>
-      <div class="col-3"><div style="background:#f8fafc;border-radius:8px;padding:7px 10px"><div style="font-size:9px;color:#6b7280;font-weight:600">거래횟수</div><div style="font-size:13px;font-weight:800;color:#7c3aed">${cd.orders}건</div></div></div>
+      <div class="col-3"><div style="background:#f8fafc;border-radius:8px;padding:7px 10px"><div style="font-size:9px;color:#6b7280;font-weight:600">거래횟수</div><div style="font-size:13px;font-weight:800;color:#7c3aed">${cd.orders!=null?cd.orders:((cd.txns||[]).length)}건</div></div></div>
     </div>
     <div style="position:relative;height:110px;margin-bottom:10px;flex-shrink:0"><canvas id="${chartId}"></canvas></div>
     <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">제품별 실적 (전년 비교)</div>
@@ -4934,12 +4936,17 @@ function _renderPartView(part, rootId){
   var mmax=1; for(var m3=1;m3<=12;m3++)mmax=Math.max(mmax,pcur[m3]||0,pprev[m3]||0);
   clientsArr.sort(function(a,b){return b.total-a.total;});
   // ── 월별 추이(클릭 → 월 상세) + 분기 요약 ──
-  var moBars=''; for(var m4=1;m4<=12;m4++){ var cv=pcur[m4]||0,pv2=pprev[m4]||0;
-    moBars+='<div onclick="openPartMonth('+m4+',\''+part+'\')" style="flex:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px" title="'+m4+'월 상세 · 올해 '+fmtW(cv)+' / 전년 '+fmtW(pv2)+'"><div style="width:100%;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:132px"><div style="width:40%;height:'+Math.max(2,Math.round(pv2/mmax*126))+'px;background:#e2e8f0;border-radius:2px 2px 0 0"></div><div style="width:40%;height:'+Math.max(2,Math.round(cv/mmax*126))+'px;background:#2563eb;border-radius:2px 2px 0 0"></div></div><div style="font-size:9px;color:#94a3b8">'+m4+'</div></div>';
+  // 막대 위 금액 라벨 + 분기 구분선(4/7/10월) — 값을 그래프에서 바로 읽게
+  var _blbl=function(v){ if(v<=0)return ''; return v>=5e7?(Math.round(v/1e8)+'억'):fmtW(v); };
+  var _barCol=function(v,barc,lblc){ var hh=Math.max(2,Math.round(v/mmax*104)); return '<div style="width:44%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:128px">'+(v>0?'<span style="font-size:10px;font-weight:800;color:'+lblc+';white-space:nowrap;margin-bottom:1px">'+_blbl(v)+'</span>':'')+'<div style="width:100%;height:'+hh+'px;background:'+barc+';border-radius:2px 2px 0 0"></div></div>'; };
+  var moBars=''; for(var m4=1;m4<=12;m4++){ var cv=pcur[m4]||0,pv2=pprev[m4]||0; var qsep=(m4===4||m4===7||m4===10);
+    moBars+='<div onclick="openPartMonth('+m4+',\''+part+'\')" style="flex:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px'+(qsep?';border-left:1px dashed #cbd5e1;margin-left:4px;padding-left:4px':'')+'" title="'+m4+'월 상세 · 올해 '+fmtW(cv)+' / 전년 '+fmtW(pv2)+'">'+
+      '<div style="width:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px">'+_barCol(pv2,'#cbd5e1','#64748b')+_barCol(cv,'#2563eb','#1d4ed8')+'</div>'+
+      '<div style="font-size:9px;color:'+(qsep?'#2563eb':'#94a3b8')+';font-weight:'+(qsep?'700':'400')+'">'+m4+'</div></div>';
   }
   var qsum=function(a,q){ var s=0; for(var i=(q-1)*3+1;i<=q*3;i++)s+=a[i]||0; return s; };
-  var qRow=[1,2,3,4].filter(function(q){return (q-1)*3+1<=lastM;}).map(function(q){ var cv=qsum(pcur,q),pv=qsum(pprev,q);
-    return '<div style="flex:1;text-align:center;border-left:'+(q>1?'1px solid #f1f5f9':'none')+'"><div style="font-size:10px;color:#94a3b8">Q'+q+'</div><div style="font-size:13px;font-weight:800;color:#2563eb">'+fmtW(cv)+'</div><div style="font-size:10px;color:#cbd5e1">전년 '+fmtW(pv)+' '+(bdg(pct(cv,pv))||'')+'</div></div>'; }).join('');
+  var qRow=[1,2,3,4].map(function(q){ var cv=qsum(pcur,q),pv=qsum(pprev,q); var has=(q-1)*3+1<=lastM;
+    return '<div style="flex:1;text-align:center;padding:3px 4px;'+(q>1?'border-left:1px dashed #e2e8f0':'')+'">'+(has?('<div style="font-size:10px;font-weight:800;color:#2563eb">Q'+q+'</div><div style="font-size:10.5px;white-space:nowrap;margin-top:1px">올해 <b style="color:#0f172a;font-size:12px">'+fmtW(cv)+'</b> '+(bdg(pct(cv,pv))||'')+' <span style="color:#64748b">전년 '+fmtW(pv)+'</span></div>'):('<div style="font-size:10px;color:#e2e8f0">Q'+q+'</div>'))+'</div>'; }).join('');
   // ── CRM(파트 스코프) ──
   var _pf=function(c){ return _partOf(c,null)===part; };
   var pDeals=(typeof INTL_PIPE!=='undefined'?INTL_PIPE:[]).filter(function(d){return _pf(d.country);});
@@ -4976,16 +4983,19 @@ function _renderPartView(part, rootId){
       '<td style="padding-right:16px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#eef2f7;border-radius:4px;overflow:hidden"><div style="width:'+w+'%;height:100%;background:#7c3aed"></div></div><span style="width:32px;text-align:right;font-size:11px;color:#94a3b8">'+share+'%</span></div></td></tr>'; }).join('')||'<tr><td colspan="'+(lead?6:5)+'" style="padding:16px;text-align:center;color:#cbd5e1">데이터 없음</td></tr>')+
     '</tbody></table></div></div>';
   // ── 거래처 TOP ──
-  var topCl=clientsArr.slice(0,12);
-  var clTable='<div class="card p-0 mt-2" style="overflow:hidden"><div class="fw-bold" style="font-size:13px;padding:12px 14px 8px"><i class="bi bi-buildings me-1" style="color:#2563eb"></i>주요 거래처 <span style="font-size:10px;font-weight:400;color:#cbd5e1">'+nClients+'개사 · 행 클릭 → 딜러 상세</span></div>'+
-    '<div style="overflow-x:auto"><table class="table table-sm mb-0" style="font-size:12px"><thead style="background:#f8fafc"><tr><th style="padding:7px 14px">거래처</th><th>국가</th><th style="text-align:right">매출</th><th>주력제품</th><th style="padding-right:14px">최근거래</th></tr></thead><tbody>'+
-    (topCl.map(function(c){ var tp=Object.entries(c.prods||{}).sort(function(a,b){return b[1]-a[1];})[0]; return '<tr style="cursor:pointer;border-top:1px solid #f4f6f9" onclick="_pvOpenDealer(this.dataset.n)" data-n="'+_esc(c.name)+'" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'+
-      '<td style="padding:6px 14px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+_esc(c.name)+'</b></td>'+
-      '<td style="color:#64748b">'+_esc(c.country)+'</td>'+
-      '<td style="text-align:right;font-weight:700">'+fmtW(c.total)+'</td>'+
-      '<td style="color:#475569;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(tp?tp[0]:'')+'</td>'+
-      '<td style="padding-right:14px;color:#94a3b8;font-size:11px">'+_esc(c.last||'')+'</td></tr>'; }).join('')||'<tr><td colspan="5" style="padding:16px;text-align:center;color:#cbd5e1">데이터 없음</td></tr>')+
-    '</tbody></table></div></div>';
+  // 주요 거래처 2단 — 한 줄 2개(좌→우 이어받기)로 세로 공간 절약
+  var topCl=clientsArr.slice(0,16);
+  var _clHead='<thead style="background:#f8fafc"><tr><th style="padding:7px 12px">거래처</th><th>국가</th><th style="text-align:right">매출</th><th>주력제품</th><th style="padding-right:12px">최근</th></tr></thead>';
+  var _clRows=topCl.map(function(c){ var tp=Object.entries(c.prods||{}).sort(function(a,b){return b[1]-a[1];})[0]; return '<tr style="cursor:pointer;border-top:1px solid #f4f6f9" onclick="_pvOpenDealer(this.dataset.n)" data-n="'+_esc(c.name)+'" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">'+
+    '<td style="padding:6px 12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>'+_esc(c.name)+'</b></td>'+
+    '<td style="color:#64748b;white-space:nowrap">'+_esc(c.country)+'</td>'+
+    '<td style="text-align:right;font-weight:700;white-space:nowrap">'+fmtW(c.total)+'</td>'+
+    '<td style="color:#475569;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(tp?tp[0]:'')+'</td>'+
+    '<td style="padding-right:12px;color:#94a3b8;font-size:11px;white-space:nowrap">'+_esc((c.last||'').slice(5))+'</td></tr>'; });
+  var _clMk=function(rws){ return '<div style="flex:1;min-width:300px;overflow-x:auto"><table class="table table-sm mb-0" style="font-size:12px;width:100%">'+_clHead+'<tbody>'+(rws.join('')||'<tr><td colspan="5" style="padding:14px;text-align:center;color:#cbd5e1">–</td></tr>')+'</tbody></table></div>'; };
+  var _clHalf=Math.ceil(_clRows.length/2);
+  var clBody=_clRows.length>4?('<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;padding:0 8px 8px">'+_clMk(_clRows.slice(0,_clHalf))+_clMk(_clRows.slice(_clHalf))+'</div>'):('<div style="padding:0 4px 6px">'+_clMk(_clRows)+'</div>');
+  var clTable='<div class="card p-0 mt-2" style="overflow:hidden"><div class="fw-bold" style="font-size:13px;padding:12px 14px 8px"><i class="bi bi-buildings me-1" style="color:#2563eb"></i>주요 거래처 <span style="font-size:10px;font-weight:400;color:#cbd5e1">'+nClients+'개사 · 행 클릭 → 딜러 상세</span></div>'+clBody+'</div>';
   // ── 회계 미반영분(이 파트) — 출고/선적예정 입력·반영처리, 회계미반영분 메뉴와 동일 데이터 연동 ──
   var _ilboR=(typeof _ilboBodyHTML==='function')?_ilboBodyHTML(part):{html:'',count:0,total:0,done:0};
   var pendTable=(_ilboR.count||_ilboR.done)?('<div class="card p-0 mb-2" id="pv-pend-'+_pvKey(part)+'" style="overflow:hidden"><div class="fw-bold" style="font-size:13px;padding:12px 16px 8px"><i class="bi bi-hourglass-split me-1" style="color:#f59e0b"></i>회계 미반영분 <span style="font-size:11px;font-weight:400;color:#94a3b8">'+_ilboR.count+'건 · '+fmtW(_ilboR.total)+' · 출고/선적예정 입력·반영처리 시 회계미반영분 메뉴와 즉시 연동</span></div><div style="overflow-x:auto"><table class="table table-sm mb-0" style="font-size:12px;min-width:680px"><thead style="background:#f8fafc"><tr><th style="padding:7px 16px">거래처</th><th>제품</th><th style="text-align:center">수량</th><th style="text-align:right">금액</th><th style="text-align:center">예정일</th><th style="text-align:center">출고예정</th><th style="text-align:center">선적예정</th><th style="text-align:center">관리</th></tr></thead><tbody>'+_ilboR.html+'</tbody></table></div></div>'):'';
@@ -5006,7 +5016,7 @@ function _renderPartView(part, rootId){
       [['파트 합계',fmtW(tot),'#0f172a',bdg(yoy)],['전년 동기',fmtW(prev),'#94a3b8',''],['거래 국가',cArr.length+'개국','#0891b2',''],['거래처',nClients+'개사','#7c3aed',''],['진행 딜',openDeals.length+'건','#0891b2',''],['가중 예상',fmtW(wDeal),'#16a34a','']].map(function(k){ return '<div class="col-6 col-md-4 col-xl-2"><div class="kpi-card" style="padding:11px 13px"><div class="kpi-label">'+k[0]+'</div><div class="kpi-value" style="font-size:1.05rem;color:'+k[2]+'">'+k[1]+' <span style="font-size:11px">'+(k[3]||'')+'</span></div></div></div>'; }).join('')+
     '</div>'+
     '<div class="row g-2 mb-2">'+
-      '<div class="col-lg-8"><div class="card p-3 h-100"><div class="fw-bold mb-2" style="font-size:13px"><i class="bi bi-bar-chart me-1" style="color:#2563eb"></i>월별 추이 <span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:4px"><span style="display:inline-block;width:8px;height:8px;background:#2563eb;border-radius:2px"></span> 올해 <span style="display:inline-block;width:8px;height:8px;background:#e2e8f0;border-radius:2px;margin-left:6px"></span> 전년 · 막대 클릭 시 월 상세</span></div><div style="display:flex;gap:5px;align-items:flex-end">'+moBars+'</div><div style="display:flex;margin-top:12px;padding-top:10px;border-top:1px solid #f1f5f9">'+qRow+'</div></div></div>'+
+      '<div class="col-lg-8"><div class="card p-3 h-100"><div class="fw-bold mb-2" style="font-size:13px"><i class="bi bi-bar-chart me-1" style="color:#2563eb"></i>월별 추이 <span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:4px"><span style="display:inline-block;width:8px;height:8px;background:#2563eb;border-radius:2px"></span> 올해 <span style="display:inline-block;width:8px;height:8px;background:#e2e8f0;border-radius:2px;margin-left:6px"></span> 전년 · 막대 클릭 시 월 상세</span></div><div style="display:flex;gap:5px;align-items:flex-end">'+moBars+'</div><div style="display:flex;margin-top:10px;padding-top:6px;border-top:1px solid #e2e8f0">'+qRow+'</div></div></div>'+
       '<div class="col-lg-4"><div class="card p-2 px-3 h-100"><div class="fw-bold mb-1" style="font-size:13px;padding-top:4px"><i class="bi bi-kanban me-1" style="color:#0891b2"></i>영업 파이프라인</div>'+
         crmRow('bi-kanban','#0891b2','진행 딜',openDeals.length+'건','가중 '+fmtW(wDeal),'sales')+
         crmRow('bi-journal-text','#16a34a','활동 기록',pActs.length+'건','','activities')+

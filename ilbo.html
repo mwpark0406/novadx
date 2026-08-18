@@ -77,7 +77,9 @@ table.ptable{width:100%;border-collapse:collapse;table-layout:fixed}
 .del-btn{background:#fee2e2;color:#dc2626;border:0;border-radius:6px;padding:5px 8px;cursor:pointer;font-weight:700}
 .save-bar{display:flex;justify-content:flex-end;margin-top:4px}
 .save-bar button{background:#2563eb;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
-.pend-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+/* 국내·해외 건수가 달라 한쪽 박스만 짧으면 테두리가 붕 떠 보인다 → 높이를 맞춘다
+   (1fr 은 콘텐츠 최소폭이 바닥이라 긴 거래처명이 들어오면 칸이 밖으로 밀린다 → minmax) */
+.pend-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
 @media(max-width:980px){.pend-grid{grid-template-columns:1fr}}
 @media(max-width:640px){.wrap{padding:0 10px}table.rpt th,table.rpt td{padding:6px 5px;font-size:11px}}
 @media(max-width:820px){
@@ -434,6 +436,9 @@ html{-webkit-text-size-adjust:100%}
           </div>
         </div>
       </div>
+      <div class="sec-h" style="margin-top:18px">↩️ 전월 이월 조정 <span class="muted">· 마감된 달의 <b>납품(선적) 잔액</b> — 회계가 납품보다 앞서 잡히면 음수. 일보 해당 월 시트의 ④ 납품(선적) 값을 그대로 넣습니다. <b>당월 미반영 합계에는 들어가지 않고</b>, 전사 대시보드의 그 달 실적에만 반영됩니다.</span></div>
+      <div class="rb-tools" style="margin-bottom:6px"><button onclick="addCarryRow()">＋ 조정 행 추가</button></div>
+      <div style="overflow-x:auto"><table class="ptable" id="carry-tbl"></table></div>
       <div class="save-bar"><button onclick="savePending(true)">💾 미반영분 저장</button></div>
     </div>
   </div>
@@ -453,7 +458,7 @@ var DIVS=['국내제품','국내소모품','해외영업','Surgical','B2C','고�
 var SECT2=['국내영업','해외영업','Surgical','B2C','고객만족'];                              // 사업부별 표 행
 function divRegion(div){ return div==='해외영업'?'해외':'국내'; }
 
-var ACC=null, PENDING=[], TARGETS={}, CONSTGT={}, _pendSeq=0, _view='report', _canUp=false;
+var ACC=null, PENDING=[], CARRY=[], TARGETS={}, CONSTGT={}, _pendSeq=0, _view='report', _canUp=false;
 
 function won(v){ return (Math.round(Number(v)||0)).toLocaleString(); }
 function numv(x){ return (x===''||x==null)?'':(Math.round(Number(x)||0)).toLocaleString(); }
@@ -481,7 +486,10 @@ function parseAccounting(wb,fname){
       var adq=r[0],memo=r[1],cname=r[3],debit=Number(r[5])||0,credit=Number(r[6])||0,dept=r[8],pnum=r[10],qty=Number(r[11])||0;
       var _dd=_xlDate(adq); if(_dd) cur=_dd;
       if(dept==null||dept==='') continue;
-      if(typeof memo==='string'&&memo.trim().charAt(0)==='[') continue;
+      // 소계행([월계]·[누계] 등)만 제외 — '['로 시작하는 모든 행을 버리면 [결산] 반품충당 같은 실매출 조정이 누락된다
+      var SUB=/^\s*\[\s*(전\s*기\s*이\s*월|월\s*계|누\s*계|합\s*계|당\s*기\s*누\s*계)\s*\]/;
+      if(typeof memo==='string'&&SUB.test(memo)) continue;
+      if(!String(cname||'').trim()) continue;   // 거래처 없는 행(반복 헤더·구분선)은 매출이 아니다
       var d=_dd||cur; if(!d) continue;
       var mo=parseInt(d.slice(5,7),10); var amt=credit-debit; var div=classify(dept,pnum);
       monthly[div][mo]=(monthly[div][mo]||0)+amt;
@@ -540,6 +548,18 @@ function snapFig(acc){
 var MATCHES={}, INTLACC=null;
 function _pCtry(name){ name=String(name||''); var i=name.indexOf('/'); if(i>=0) return norm(name.slice(0,i)); var m=name.match(/^(.+?)법인/); return m?norm(m[1]):''; }
 function _pdate(s){ if(!s) return null; var d=new Date(s); return isNaN(d.getTime())?null:d; }
+// 해외 거래처명 유사도 — 국가만 같으면 자동제외하던 탓에 오탐이 났다(근사금액이 다른 거래처에 붙는 사고).
+// 금액이 딱 떨어지지 않는 근사매칭에서는 병원·딜러명까지 본다.
+function _nmBody(s){ s=String(s||''); var i=s.indexOf('/'); return i>=0?s.slice(i+1):s; }
+function _nmTok(s){ return _nmBody(s).toLowerCase().replace(/[^a-z0-9가-힣]+/g,' ').split(' ').filter(function(t){
+  return t.length>2 && !/^(clinic|clinics|beauty|medical|medicine|hospital|center|centre|derma|skin|ladies|company|group|의원|병원|클리닉|피부과)$/.test(t); }); }
+function _nmLike(a,b){ var x=norm(_nmBody(a)), y=norm(_nmBody(b));
+  if(!x||!y) return false;
+  if(x===y) return true;
+  if(x.length>=4&&y.length>=4&&(x.indexOf(y)>=0||y.indexOf(x)>=0)) return true;
+  var tx=_nmTok(a), ty=_nmTok(b);
+  for(var i=0;i<tx.length;i++) if(ty.indexOf(tx[i])>=0) return true;
+  return false; }
 // 해외 회계 원장(intl.INTL2026.countries[].clientData[].txns) → 대조 라인(연간 누적). 해외는 ACC.lines에 거의 없어 별도 소스.
 function _intlLines(intlAcc){ var out=[]; var C=(intlAcc&&intlAcc.INTL2026&&intlAcc.INTL2026.countries)||{};
   Object.keys(C).forEach(function(cc){ var cd=(C[cc]&&C[cc].clientData)||{};
@@ -560,7 +580,7 @@ function flagMatches(doAuto){
       var custOk = isIntl ? (pcty&&_pCtry(l.customer)===pcty) : (norm(l.customer)===pc);
       if(custOk){
         if(prodEq&&la===pa&&(pq===0||lq===pq)){ if(!hit) hit=l; }                 // 거래처/국가+제품+금액 정확 → 자동
-        else if(prodEq&&pa>0&&Math.abs(la-pa)<=pa*0.02){ if(!hit) hit=l; }         // +금액±2%(반올림·소액할인) → 자동
+        else if(prodEq&&pa>0&&Math.abs(la-pa)<=pa*0.02){ if(!isIntl||_nmLike(p.customer,l.customer)){ if(!hit) hit=l; } else cand.push(l); }         // +금액±2%(반올림·소액할인) → 자동. 단 해외는 거래처명까지 닮아야 자동, 국가만 같으면 확인필요
         else if(pa>0&&Math.abs(la-pa)<=pa*0.1&&(!isIntl||p.type==='완료')){ cand.push(l); }   // 제품다름·금액근접 → 확인필요(해외는 선적'완료'만, 예정 오탐방지)
       } else if(isIntl&&p.type==='완료'&&prodEq&&pa>0&&Math.abs(la-pa)<=pa*0.1){ cand.push(l); }    // 국가다르나 제품+금액근접 → 확인필요(완료만)
     });
@@ -583,7 +603,7 @@ function loadAll(){
     _sb.from('cons_cache').select('data').eq('key','intl').maybeSingle()      // 해외 미반영 대조용 회계 원장
   ]).then(function(res){
     if(res[0].data&&res[0].data.data) ACC=res[0].data.data;
-    if(res[1].data&&res[1].data.data&&res[1].data.data.rows) PENDING=res[1].data.data.rows; if(res[1].data&&res[1].data.data) window._ilboCarryKeep=res[1].data.data.carry||[];   // 저장 시 carry 키 유실 방지
+    if(res[1].data&&res[1].data.data&&res[1].data.data.rows) PENDING=res[1].data.data.rows; if(res[1].data&&res[1].data.data){ window._ilboCarryKeep=res[1].data.data.carry||[]; CARRY=res[1].data.data.carry||[]; renderCarry(); }   // 저장 시 carry 키 유실 방지 + 편집용 로드
     if(res[2].data&&res[2].data.data) TARGETS=res[2].data.data;
     if(res[3].data&&res[3].data.data) CONSTGT=res[3].data.data;
     if(res[4]&&res[4].data&&res[4].data.data) INTLACC=res[4].data.data;
@@ -602,6 +622,9 @@ function s2Acc(name,mo){ if(name==='국내영업') return dAcc('국내제품',mo
 function s2Tgt(name,mo){ if(name==='국내영업') return dTgt('국내제품',mo)+dTgt('국내소모품',mo); return dTgt(name,mo); }
 function s2Cum(name,a,b){ var s=0; for(var m=a;m<=b;m++) s+=s2Acc(name,m); return s; }
 function s2Region(name){ return name==='해외영업'?'해외':'국내'; }
+// 전월 이월 조정(CARRY) 기간합 — 일보 엑셀 ①(누적회계+마감조정)/⑨와 정합 위해 누적 컬럼에 가산 (당월 컬럼엔 미적용)
+function carrySum(name,a,b){ if(name!=='국내영업'&&name!=='해외영업') return 0; var rg=s2Region(name), yy=String(ACC&&ACC.reportDate||'2026').slice(0,4), s=0;
+  (CARRY||[]).forEach(function(c){ var ym=String(c.ym||''); if(ym.slice(0,4)!==yy) return; var m=parseInt(ym.slice(5,7),10); if(!(m>=a&&m<=b)) return; if((c.region||'국내')!==rg) return; s+=Number(c.amount)||0; }); return s; }
 // 미반영(pending): 사업부 매핑 — 국내→국내영업, 해외→해외영업
 function pendSum(name,type){ var rg=s2Region(name); var s=0; PENDING.forEach(function(p){ if(!notDone(p))return; if(name!=='국내영업'&&name!=='해외영업')return; if(p.region!==rg)return; if(type&&p.type!==type)return; s+=Number(p.amount)||0; }); return s; }
 
@@ -639,8 +662,8 @@ function render(){
   var d2='<tr><th class="g2" style="width:10%">사업부명</th><th style="'+W+'">전월까지 누적(회계)</th><th style="'+W+'">'+cur+'월 매출목표</th><th class="hi" style="'+W+'">'+cur+'월 매출액(회계)</th><th style="'+W+'">납품(선적)</th><th style="'+W+'">미납품(미선적)</th><th class="hi" style="'+W+'">'+cur+'월 예상</th><th style="width:8%">달성률</th><th style="'+W+'">연간 누적(예상)</th></tr>';
   var T={cum:0,tgt:0,acc:0,yes:0,no:0,exp:0,ycum:0};
   SECT2.forEach(function(n){
-    var cum=s2Cum(n,1,cur-1), tgt=s2Tgt(n,cur), acc=s2Acc(n,cur), yes=pendSum(n,'완료'), no=pendSum(n,'예정'), exp=acc+yes+no;
-    var ycum=s2Cum(n,1,12)+yes+no;
+    var cum=s2Cum(n,1,cur-1)+carrySum(n,1,cur-1), tgt=s2Tgt(n,cur), acc=s2Acc(n,cur), yes=pendSum(n,'완료'), no=pendSum(n,'예정'), exp=acc+yes+no;
+    var ycum=s2Cum(n,1,12)+yes+no+carrySum(n,1,12);
     if(cum===0&&tgt===0&&acc===0&&exp===0) return;
     T.cum+=cum;T.tgt+=tgt;T.acc+=acc;T.yes+=yes;T.no+=no;T.exp+=exp;T.ycum+=ycum;
     d2+='<tr onclick="openDivDetail(\''+n+'\')" style="cursor:pointer" title="클릭하면 사업부 상세"><td class="lbl">'+n+' <i class="bi bi-search" style="font-size:8px;color:#cbd5e1"></i></td><td>'+won(cum)+'</td><td>'+won(tgt)+'</td><td class="hi">'+won(acc)+'</td><td>'+(yes?won(yes):'-')+'</td><td>'+(no?won(no):'-')+'</td><td class="hi">'+won(exp)+'</td><td>'+pctTxt(exp,tgt)+'</td><td>'+won(ycum)+'</td></tr>';
@@ -773,7 +796,31 @@ function _pendMark(on){
 }
 window.addEventListener('beforeunload',function(e){ if(!_pendDirty)return; e.preventDefault(); e.returnValue=''; return ''; });
 function delPend(i){ var p=PENDING[i]||{}; var nm=(p.customer||p.product||'').trim(); if(!confirm('이 미반영 건'+(nm?' ("'+nm+'")':'')+'을 삭제할까요?'))return; PENDING.splice(i,1); _pendMark(true); refresh(); }
-function refresh(){ if(ACC) render(); else renderPend(); }
+// ── 전월 이월 조정 ────────────────────────────────────────
+// 마감된 달의 ④ 납품(선적) 잔액. PENDING 과 별도로 두는 이유:
+// 같은 목록에 넣으면 월 구분이 없어 당월 미반영 합계(pendSum)까지 오염된다.
+function addCarryRow(){ CARRY.unshift({ym:'',region:'국내',item:'제품',amount:'',memo:''}); _pendMark(true); renderCarry(); }
+function carrySet(i,k,v){ if(!CARRY[i])return; if(k==='amount'){ v=String(v).replace(/[^0-9.\-]/g,''); v=v===''?'':Number(v); } CARRY[i][k]=v; _pendMark(true); renderCarry(); }
+function delCarry(i){ CARRY.splice(i,1); _pendMark(true); renderCarry(); }
+function renderCarry(){
+  var t=document.getElementById('carry-tbl'); if(!t) return;
+  var sum=0; CARRY.forEach(function(c){ sum+=Number(c.amount)||0; });
+  var head='<colgroup><col style="width:13%"><col style="width:11%"><col style="width:11%"><col style="width:18%"><col style="width:38%"><col style="width:9%"></colgroup>'+
+    '<tr><th>대상 월</th><th>구분</th><th>품목</th><th>금액</th><th>메모</th><th></th></tr>';
+  var body=CARRY.map(function(c,i){
+    var rg=['국내','해외'].map(function(o){return '<option'+(c.region===o?' selected':'')+'>'+o+'</option>';}).join('');
+    var it=['제품','소모품'].map(function(o){return '<option'+(c.item===o?' selected':'')+'>'+o+'</option>';}).join('');
+    return '<tr><td><input type="month" value="'+esc(c.ym||'')+'" onchange="carrySet('+i+",'ym',this.value)\"></td>"+
+      '<td><select onchange="carrySet('+i+",'region',this.value)\">"+rg+'</select></td>'+
+      '<td><select onchange="carrySet('+i+",'item',this.value)\">"+it+'</select></td>'+
+      '<td><input inputmode="numeric" value="'+numv(c.amount)+'" onchange="carrySet('+i+",'amount',this.value)\" style=\"text-align:right\"></td>"+
+      '<td><input value="'+esc(c.memo||'')+'" onchange="carrySet('+i+",'memo',this.value)\"></td>"+
+      '<td><button class="del-btn" onclick="delCarry('+i+')">✕</button></td></tr>';
+  }).join('');
+  t.innerHTML=head+(body||'<tr><td colspan="6" style="text-align:center;color:#9ca3af;padding:14px">조정할 내역이 없으면 비워두세요</td></tr>')+
+    (CARRY.length?'<tr><td colspan="3" style="text-align:right;font-weight:700">합계</td><td style="text-align:right;font-weight:700;color:'+(sum<0?'#b91c1c':'#166534')+'">'+won(sum)+'</td><td colspan="2"></td></tr>':'');
+}
+function refresh(){ if(ACC) render(); else renderPend(); renderCarry(); }
 var _showAck=false;
 function toggleShowAck(){ _showAck=!_showAck; renderReflected(); }
 function ackReflected(id){ for(var i=0;i<PENDING.length;i++){ if(PENDING[i].id===id){ PENDING[i].ack=true; break; } } savePending(false); renderReflected(); }

@@ -1811,8 +1811,10 @@ try{
 }catch(e){}
 
 /* 음수도 억/만원 단위로 — 예전엔 v>=1e8 비교라 음수가 전부 '원' 단위 원문으로 새어나갔다 */
+/* 억 표기에 천단위 구분(1,058.9억) — 세 자릿수 넘어가면 눈으로 자리 세던 것 해소 */
+const _ok1 = v => Number((Number(v)||0)/1e8).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
 const fmtW = v => { v=Number(v)||0; const sg=v<0?'−':''; v=Math.abs(v);
-  return sg+(v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e4?Math.round(v/1e4).toLocaleString()+'만원':Math.round(v).toLocaleString()+'원'); };
+  return sg+(v>=1e8?_ok1(v)+'억':v>=1e4?Math.round(v/1e4).toLocaleString()+'만원':Math.round(v).toLocaleString()+'원'); };
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _jsAttr(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 const sumMo = (o,f,t)=>{ if(!o) return 0; let s=0; for(let m=f;m<=t;m++) s+=Number(o[m]||0); return s; };
@@ -2100,9 +2102,10 @@ function _pendingAgg(yr){
     var ym=String(c.ym||''); if(ym.slice(0,4)!==String(yr)) return;
     var mo=parseInt(ym.slice(5,7),10), amt=Number(c.amount||0);
     if(!(mo>=1&&mo<=12)||!amt) return;
-    if(c.region==='해외'){ agg.intlMonthly[mo]=(agg.intlMonthly[mo]||0)+amt; agg.intlTotal+=amt; return; }
+    if(c.region==='해외'){ agg.intlMonthly[mo]=(agg.intlMonthly[mo]||0)+amt; agg.intlTotal+=amt; (agg.carryIntlMonthly=agg.carryIntlMonthly||{})[mo]=(agg.carryIntlMonthly[mo]||0)+amt; return; }
     if(c.item==='소모품') agg.consMonthly[mo]=(agg.consMonthly[mo]||0)+amt;
     else agg.devMonthly[mo]=(agg.devMonthly[mo]||0)+amt;
+    (agg.carryDomMonthly=agg.carryDomMonthly||{})[mo]=(agg.carryDomMonthly[mo]||0)+amt;
     agg.total+=amt;
   });
   return agg;
@@ -2632,8 +2635,8 @@ function renderOvMonthly(){
     const domConf=(CONS.monthly2026&&CONS.monthly2026[m]||0)+(DEVICE.monthly2026&&DEVICE.monthly2026[m]||0);
     const intlConf=(INTL.monthly&&INTL.monthly[m]||0);
     const etc=(CONS.etcMonthly2026&&CONS.etcMonthly2026[m]||0);
-    const dom=domConf+(isCur?((pend.consMonthly[m]||0)+(pend.devMonthly[m]||0)):0);
-    const intl=intlConf+(isCur?(pend.intlMonthly[m]||0):0);
+    const dom=domConf+(isCur?((pend.consMonthly[m]||0)+(pend.devMonthly[m]||0)):((pend.carryDomMonthly&&pend.carryDomMonthly[m])||0));
+    const intl=intlConf+(isCur?(pend.intlMonthly[m]||0):((pend.carryIntlMonthly&&pend.carryIntlMonthly[m])||0));
     const tot=dom+intl+etc;
     const prev=(CONS.monthly2025&&CONS.monthly2025[m]||0)+(DEVICE.monthly2025&&DEVICE.monthly2025[m]||0)+(CONS.etcMonthly2025&&CONS.etcMonthly2025[m]||0)+((INTL.data2025&&INTL.data2025.monthly&&INTL.data2025.monthly[m])||0);
     const y=pct(tot,prev); yd+=dom; yi+=intl; ye+=etc; yp+=prev;
@@ -2666,6 +2669,11 @@ function openOvDetail(m,type){
     const REGS=['동남아','중화','중동','유럽','미주','인도법인','미국법인','중국법인','기타'];
     REGS.forEach(r=>add('해외 '+r,(_ovRegMo[r]&&_ovRegMo[r][m])||0,INTL_TEAL,'해외영업|'+(r==='기타'?'기타·미분류':r)));
     if(isCur){ const ip=_pendForReport().intl; REGS.forEach(r=>add('해외 미반영·'+r,(ip[r]&&ip[r][m])||0,'#2563eb')); }
+  }
+  if(!isCur){ // 과거월 carry — 월별표와 모달 합계 정합
+    const cD=(pend.carryDomMonthly&&pend.carryDomMonthly[m])||0, cI=(pend.carryIntlMonthly&&pend.carryIntlMonthly[m])||0;
+    if((type==='dom'||type==='total')&&cD) add('전월 이월 조정(국내)',cD,'#b45309');
+    if((type==='intl'||type==='total')&&cI) add('전월 이월 조정(해외)',cI,'#b45309');
   }
   if(type==='total'){ add('기타(의료기기·서지컬·B2C·고객만족)',(CONS.etcMonthly2026&&CONS.etcMonthly2026[m]||0),'#94a3b8'); }
   const sum=rows.reduce((s,x)=>s+x.v,0), den=sum||1;
@@ -2809,6 +2817,14 @@ function _pendForReport(){   // 국내(제품/소모품) + 해외(지역별) 미
     if(p.region==='해외'){ var r=_pendRegion(p.country); intl[r]=intl[r]||{}; intl[r][mo]=(intl[r][mo]||0)+amt; }
     else { var it=_pendKrItem(p.product); kr[it][mo]=(kr[it][mo]||0)+amt; }
   });
+  // 전월 이월 조정(carry) — report탭 합계도 월별표·hero와 정합되게 가산
+  (ILBO_CARRY||[]).forEach(function(c){
+    var ym=String(c.ym||''); if(ym.slice(0,4)!=='2026') return;
+    var mo=parseInt(ym.slice(5,7),10), amt=Number(c.amount||0);
+    if(!(mo>=1&&mo<=12)||!amt) return;
+    if(c.region==='해외'){ intl['기타']=intl['기타']||{}; intl['기타'][mo]=(intl['기타'][mo]||0)+amt; }
+    else { var it2=(c.item==='소모품')?'소모품':'제품'; kr[it2][mo]=(kr[it2][mo]||0)+amt; }
+  });
   return {kr,intl};
 }
 function _rptPeriods(){
@@ -2866,6 +2882,12 @@ function renderReport(){
   const kSum=_sumV([kProd,kCons]);
   const REGIONS=['동남아','중화','중동','유럽','미주'], CORPS=['인도법인','미국법인','중국법인'];
   const regRows=REGIONS.map(r=>({r,v:_rowVals(reg26[r],pend.intl[r],reg25[r],'해외영업',r)}));
+  // 목록에 없는 지역이 데이터에 생기면 자동 추가 — 빠지면 소계·전사합이 회계와 어긋남
+  const _knownReg=REGIONS.concat(CORPS,['기타']);
+  Object.keys(Object.assign({},reg26,reg25,pend.intl||{})).filter(rg=>_knownReg.indexOf(rg)<0).sort().forEach(rg=>{
+    const v=_rowVals(reg26[rg],pend.intl[rg],reg25[rg],'해외영업',rg);
+    if(v.h1.act!==0||v.q2.act!==0||(v.h1.pnd||0)!==0) regRows.push({r:rg,v:v});
+  });
   const etcV=_rowVals(reg26['기타'],pend.intl['기타'],reg25['기타'],'해외영업','기타');
   if(etcV.h1.act>0||etcV.q2.act>0) regRows.push({r:'기타·미분류',v:etcV});
   const corpRows=CORPS.map(r=>({r,v:_rowVals(reg26[r],pend.intl[r],reg25[r],'해외영업',r)}));
@@ -3781,14 +3803,15 @@ function _repBase(n){ return String(n||'').replace(/^\s*\d+\.\s*/,'').trim(); }
 // 해외 담당자 대수 — 담당자×제품 수량 원자료가 없어, 담당자 제품매출을 제품 전체 매출 대비 비중으로 수량 안분(mq 있으면 그것 우선)
 function _intlRepQty(src,f,t){
   const out={}; if(!src||!src.reps) return out;
+  // '대'는 장비만 — 팁·키트·시약 등 소모품 수량이 섞이면 담당자 대수가 부풀음. 파서 실측(r.mq)도 소모품 수량 포함이라 안 씀.
+  const _consQ=/의료기기|소모품|팁|tip|cartridge|카트리지|A\/S|키트|kit|카세트|시약|strip|스트립|reagent|needle|니들/i;
   const pv={},pq={};
-  Object.keys(src.prodMo||{}).forEach(function(p2){ pv[p2]=sumMo(src.prodMo[p2],f,t); });
-  Object.keys(src.prodMoQty||{}).forEach(function(p2){ pq[p2]=sumMo(src.prodMoQty[p2],f,t); });
+  Object.keys(src.prodMo||{}).forEach(function(p2){ if(_consQ.test(p2)) return; pv[p2]=sumMo(src.prodMo[p2],f,t); });
+  Object.keys(src.prodMoQty||{}).forEach(function(p2){ if(_consQ.test(p2)) return; pq[p2]=sumMo(src.prodMoQty[p2],f,t); });
   Object.entries(src.reps).forEach(function(e){ const n=e[0], r=e[1], nm=_repBase(n);
-    if(r&&r.mq&&Object.keys(r.mq).length){ out[nm]=(out[nm]||0)+sumMo(r.mq,f,t); return; }
     const yv=sumMo(r&&r.m,1,12), sv=sumMo(r&&r.m,f,t); if(!yv) return;
     const sc=sv/yv; let q=0;
-    Object.keys((r&&r.prods)||{}).forEach(function(p2){ if(!pv[p2]||!pq[p2]) return; q+=((r.prods[p2]||0)*sc)/pv[p2]*pq[p2]; });
+    Object.keys((r&&r.prods)||{}).forEach(function(p2){ if(_consQ.test(p2)) return; if(!pv[p2]||!pq[p2]) return; q+=((r.prods[p2]||0)*sc)/pv[p2]*pq[p2]; });
     out[nm]=(out[nm]||0)+Math.round(q);
   });
   return out;

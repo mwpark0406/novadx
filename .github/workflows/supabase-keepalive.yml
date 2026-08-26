@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Ping Supabase REST API
         run: |
-          curl -sf -o /dev/null \
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
             "https://bdkurlqmfsswgeiujyev.supabase.co/rest/v1/" \
-            -H "apikey: sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3"
+            -H "apikey: sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3" \
+            -H "Authorization: Bearer sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3")
+          echo "HTTP status: $code"

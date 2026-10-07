@@ -2,17 +2,22 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    - cron: '0 3 */3 * *'
+    - cron: '0 3 */2 * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Query Supabase table
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://bdkurlqmfsswgeiujyev.supabase.co/rest/v1/" \
-            -H "apikey: sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3" \
-            -H "Authorization: Bearer sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3")
-          echo "HTTP status: $code"
+          KEY="sb_publishable_pOXTPRPFUESBxgXBAo9mBg_zaW5jID3"
+          URL="https://bdkurlqmfsswgeiujyev.supabase.co/rest/v1/site_registry?select=*&limit=1"
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || echo 000)
+            echo "attempt $i: HTTP status: $code"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then exit 0; fi
+            sleep 20
+          done
+          echo "Supabase keepalive failed"
+          exit 1
